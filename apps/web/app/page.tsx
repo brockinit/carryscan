@@ -121,7 +121,7 @@ export default function DashboardPage() {
           }}
           aria-hidden
         />
-        <span>{error ? "error" : data?.stale ? "stale" : "live"}</span>
+        <span>{error ? "error" : data?.stale ? "stale" : data?.live_mode ? "live · hl direct" : "live"}</span>
         <span className="text-[var(--faint)]">/</span>
         <span>dex: xyz</span>
         <span className="text-[var(--faint)]">/</span>

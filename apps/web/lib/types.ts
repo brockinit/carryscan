@@ -16,6 +16,7 @@ export type MarketRow = {
 export type MarketsResponse = {
   as_of: string | null;
   stale: boolean;
+  live_mode?: boolean;
   defaults: { borrow_pct: number; fees_rt_bps: number; horizon: string };
   summary: {
     richest: { coin: string; net_carry: number } | null;

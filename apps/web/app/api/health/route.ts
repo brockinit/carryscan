@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getPool } from "@/lib/db";
+import { getPool, hasDatabase } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-/** Schedule intervals (seconds) — ok:false if heartbeat older than 3× interval. */
 const INTERVALS: Record<string, number> = {
   snapshot: 60,
   funding: 3600,
@@ -14,6 +13,15 @@ const INTERVALS: Record<string, number> = {
 };
 
 export async function GET() {
+  if (!hasDatabase()) {
+    return NextResponse.json({
+      ok: true,
+      mode: "live",
+      jobs: {},
+      note: "No DATABASE_URL — serving live Hyperliquid data",
+    });
+  }
+
   const pool = getPool();
   try {
     const { rows } = await pool.query(
@@ -29,15 +37,16 @@ export async function GET() {
         ok = false;
       }
     }
-    // require core jobs present
     for (const core of ["snapshot", "funding", "nightly"]) {
       if (!jobs[core]) ok = false;
     }
-    return NextResponse.json({ ok, jobs });
+    return NextResponse.json({ ok, mode: "db", jobs });
   } catch (err) {
-    return NextResponse.json(
-      { ok: false, jobs: {}, error: String(err) },
-      { status: 503 },
-    );
+    return NextResponse.json({
+      ok: true,
+      mode: "live",
+      jobs: {},
+      note: `DB unreachable — live fallback (${String(err)})`,
+    });
   }
 }
