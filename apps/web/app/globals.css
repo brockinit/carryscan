@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #0c111b;
+  --panel: #131a28;
+  --panel-2: #182136;
+  --line: #232d40;
+  --text: #e8edf6;
+  --muted: #8c99b0;
+  --faint: #5a6780;
+  --gold: #e8b54d;
+  --gold-hi: #ffd37a;
+  --mint: #5cd6a9;
+  --coral: #ef6f6c;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  color: var(--text);
+  background: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding: 28px clamp(16px, 4vw, 56px) 64px;
+}
+
+a {
+  color: inherit;
+}
+
+.font-disp {
+  font-family: var(--font-disp), var(--font-sans), system-ui, sans-serif;
+}
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+.font-sans {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.fade {
+  animation: rise 0.5s ease both;
+}
+.fade.d1 {
+  animation-delay: 0.06s;
+}
+.fade.d2 {
+  animation-delay: 0.12s;
+}
+.fade.d3 {
+  animation-delay: 0.18s;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade {
+    animation: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
+.pos {
+  color: var(--mint);
+}
+.neg {
+  color: var(--coral);
+}
+.dim {
+  color: var(--muted);
+}
+
+/* shimmer skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--panel-2) 25%,
+    var(--line) 50%,
+    var(--panel-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.cash-cell {
+  position: relative;
+}
+.cash-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 3px,
+    rgba(12, 17, 27, 0.55) 3px 5px
+  );
+}

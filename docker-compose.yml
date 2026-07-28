@@ -1,0 +1,63 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: carryscan
+      POSTGRES_PASSWORD: carryscan
+      POSTGRES_DB: carryscan
+    ports:
+      - "5432:5432"
+    volumes:
+      - tsdata:/var/lib/postgresql/data
+      - ./db/migrations/000_init.sql:/docker-entrypoint-initdb.d/000_init.sql:ro
+      - backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carryscan -d carryscan"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ingest:
+    build:
+      context: .
+      dockerfile: services/ingest/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://carryscan:carryscan@db:5432/carryscan
+      EARNINGS_CSV: /app/db/seed/earnings.csv
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://carryscan:carryscan@db:5432/carryscan
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - web
+    profiles: ["prod"]
+
+volumes:
+  tsdata:
+  backups:
+  caddy_data:

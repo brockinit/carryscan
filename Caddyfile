@@ -1,0 +1,9 @@
+:80 {
+  encode gzip
+
+  @api path /api/*
+  header @api Cache-Control "no-store"
+  header !@api Cache-Control "public, max-age=60"
+
+  reverse_proxy web:3000
+}
