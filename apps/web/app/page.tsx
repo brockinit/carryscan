@@ -90,66 +90,61 @@ export default function DashboardPage() {
 
   return (
     <>
-      <header className="fade flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <div className="font-disp text-[26px] font-bold tracking-[-0.01em]">
-            Carry<em className="not-italic text-[var(--gold)]">Scan</em>
-          </div>
-          <div className="font-mono mt-1 text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
-            HIP-3 funding &amp; basis · equity perps that never sleep
-          </div>
+      <header className="topbar fade">
+        <div className="mark">
+          <span className="brand">
+            Carry<em>Scan</em>
+          </span>
+          <span>HIP-3 · xyz</span>
         </div>
-        <nav className="font-mono flex gap-5 text-[12.5px]" aria-label="Site">
-          <a className="text-[var(--muted)] no-underline border-b border-transparent pb-0.5 hover:text-[var(--text)] hover:border-[var(--gold)]" href="#">
-            Methodology
-          </a>
-          <a className="text-[var(--muted)] no-underline border-b border-transparent pb-0.5 hover:text-[var(--text)] hover:border-[var(--gold)]" href="#">
-            Weekly report
-          </a>
-          <a className="text-[var(--muted)] no-underline border-b border-transparent pb-0.5 hover:text-[var(--text)] hover:border-[var(--gold)]" href="#">
-            Alerts ↗
-          </a>
+        <nav aria-label="Site" style={{ display: "flex", gap: 20 }}>
+          <a href="#">Methodology</a>
+          <a href="#">Weekly report</a>
+          <a href="#">Alerts</a>
         </nav>
       </header>
 
-      <div className="fade d1 font-mono mt-3.5 flex flex-wrap items-center gap-2.5 text-xs text-[var(--muted)]">
+      <h1 className="page-title fade d1">Funding &amp; basis</h1>
+      <p className="page-dek fade d1">
+        Net carry on Hyperliquid HIP-3 equity and index perps — short the perp, long the cash,
+        bank the funding while the cash market sleeps.
+      </p>
+
+      <div className="status-row fade d1">
         <span
-          className="inline-block h-1.5 w-1.5 rounded-full"
+          className="dot"
           style={{
-            background: data?.stale || error ? "var(--coral)" : "var(--mint)",
-            boxShadow: data?.stale || error ? "0 0 8px rgba(239,111,108,.7)" : "0 0 8px rgba(92,214,169,.7)",
+            background: data?.stale || error ? "var(--down)" : "var(--up)",
           }}
           aria-hidden
         />
         <span>{error ? "error" : data?.stale ? "stale" : data?.live_mode ? "live · hl direct" : "live"}</span>
-        <span className="text-[var(--faint)]">/</span>
+        <span>/</span>
         <span>dex: xyz</span>
-        <span className="text-[var(--faint)]">/</span>
+        <span>/</span>
         <span>{data?.markets.length ?? "—"} markets</span>
-        <span className="text-[var(--faint)]">/</span>
-        <span>
-          last tick {ago == null ? "—" : `${ago}s ago`}
-        </span>
-        <span className="text-[var(--faint)]">/</span>
-        <span>funding settles hourly at :00</span>
-        <span className="text-[var(--faint)]">/</span>
+        <span>/</span>
+        <span>last tick {ago == null ? "—" : `${ago}s ago`}</span>
+        <span>/</span>
         <span>{formatStatusTime(now)}</span>
       </div>
 
       {(error || (!isLoading && !data)) && (
-        <p className="fade d1 mt-4 font-sans text-sm text-[var(--coral)]">
+        <p className="fade d1" style={{ marginTop: 16, color: "var(--down)", fontSize: 14 }}>
           Data feed unreachable. Retrying — nothing you need to do. ({retryIn}s)
         </p>
       )}
 
-      <SummaryStrip
-        loading={isLoading && !data}
-        richest={richestLive}
-        medianApr7d={data?.summary.median_apr_7d ?? null}
-        weekendPremium={data?.summary.weekend_premium_pts ?? null}
-        totalOi={data?.summary.total_oi_usd ?? null}
-        marketCount={data?.markets.length ?? 0}
-      />
+      <div className="fade d2" style={{ marginTop: 28 }}>
+        <SummaryStrip
+          loading={isLoading && !data}
+          richest={richestLive}
+          medianApr7d={data?.summary.median_apr_7d ?? null}
+          weekendPremium={data?.summary.weekend_premium_pts ?? null}
+          totalOi={data?.summary.total_oi_usd ?? null}
+          marketCount={data?.markets.length ?? 0}
+        />
+      </div>
 
       <Controls
         search={search}
@@ -168,7 +163,7 @@ export default function DashboardPage() {
         feePts={feePts}
       />
 
-      <footer className="fade d3 font-mono mt-6 flex flex-wrap justify-between gap-4 text-[11.5px] text-[var(--faint)]">
+      <footer className="site-footer fade d3">
         <span>funding: Hyperliquid · cash closes: Massive · basis vs last 16:00 ET close</span>
         <span>research tool — not investment advice</span>
       </footer>

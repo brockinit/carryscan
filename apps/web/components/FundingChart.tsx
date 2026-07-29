@@ -22,7 +22,11 @@ export function FundingChart({ dailyApr, weekendIdx, start, borrowPct }: Props) 
     ? (() => {
         const d = new Date(start + "T12:00:00Z");
         d.setUTCDate(d.getUTCDate() + n - 1);
-        return d.toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+        return d.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        });
       })()
     : "";
   const startLabel = start
@@ -37,18 +41,17 @@ export function FundingChart({ dailyApr, weekendIdx, start, borrowPct }: Props) 
   const ticks = [0, 12, 24, 36, 48].filter((v) => v <= mx);
 
   return (
-    <section className="mt-5 border border-[var(--line)] bg-[var(--panel)]" aria-label="Funding history">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--line)] px-[18px] py-3.5">
-        <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
-          Realized funding · daily APR · 30d
-        </h2>
-        <div className="font-sans text-xs text-[var(--muted)]">
-          gold band = weekends · dashed = your borrow hurdle {borrowPct.toFixed(1)}%
+    <section className="panel" aria-label="Funding history">
+      <div className="shead">
+        <h2>Realized funding · daily APR · 30d</h2>
+        <div className="note">
+          mint band = weekends · dashed = your borrow hurdle {borrowPct.toFixed(1)}%
         </div>
       </div>
-      <div className="p-[18px]">
+      <div className="pad">
         <svg
-          className="block h-auto w-full"
+          className="chart"
+          style={{ width: "100%", height: "auto", display: "block" }}
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
           role="img"
@@ -56,69 +59,44 @@ export function FundingChart({ dailyApr, weekendIdx, start, borrowPct }: Props) 
         >
           <defs>
             <linearGradient id="gfill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="rgba(232,181,77,.28)" />
-              <stop offset="1" stopColor="rgba(232,181,77,0)" />
+              <stop offset="0" stopColor="rgba(12,110,94,.22)" />
+              <stop offset="1" stopColor="rgba(12,110,94,0)" />
             </linearGradient>
           </defs>
           {weekendIdx.map(([a, b], i) => (
             <rect
               key={i}
+              className="wkend"
               x={x(a) - 6}
               y={12}
               width={x(b) - x(a) + 12}
               height={H - 34}
-              fill="rgba(232,181,77,.07)"
             />
           ))}
           <line
+            className="hurdle"
             x1={P}
             x2={W - 8}
             y1={y(borrowPct)}
             y2={y(borrowPct)}
-            stroke="var(--muted)"
-            strokeWidth={1}
-            strokeDasharray="4 4"
           />
-          <text
-            x={W - 8}
-            y={y(borrowPct) - 5}
-            textAnchor="end"
-            fill="var(--muted)"
-            style={{ fontFamily: "var(--font-mono)", fontSize: 9.5 }}
-          >
+          <text x={W - 8} y={y(borrowPct) - 5} textAnchor="end" className="hl">
             borrow {borrowPct.toFixed(1)}
           </text>
           <polygon
+            className="area"
             points={`${x(0)},${y(0)} ${pts} ${x(n - 1)},${y(0)}`}
-            fill="url(#gfill)"
           />
-          <polyline points={pts} fill="none" stroke="var(--gold)" strokeWidth={1.6} />
+          <polyline className="lineF" points={pts} />
           {ticks.map((v) => (
-            <text
-              key={v}
-              x={4}
-              y={y(v) + 3}
-              fill="var(--faint)"
-              style={{ fontFamily: "var(--font-mono)", fontSize: 9.5 }}
-            >
+            <text key={v} x={4} y={y(v) + 3}>
               {v}
             </text>
           ))}
-          <text
-            x={x(0)}
-            y={H - 6}
-            fill="var(--faint)"
-            style={{ fontFamily: "var(--font-mono)", fontSize: 9.5 }}
-          >
+          <text x={x(0)} y={H - 6}>
             {startLabel}
           </text>
-          <text
-            x={x(n - 1)}
-            y={H - 6}
-            textAnchor="end"
-            fill="var(--faint)"
-            style={{ fontFamily: "var(--font-mono)", fontSize: 9.5 }}
-          >
+          <text x={x(n - 1)} y={H - 6} textAnchor="end">
             {end}
           </text>
         </svg>

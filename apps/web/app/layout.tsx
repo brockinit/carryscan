@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Fraunces, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const disp = Bricolage_Grotesque({
+const disp = Fraunces({
   subsets: ["latin"],
   variable: "--font-disp",
-  weight: ["500", "700"],
+  weight: ["300", "400", "500"],
 });
 
-const mono = IBM_Plex_Mono({
+const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   weight: ["400", "500", "600"],
 });
 
-const sans = IBM_Plex_Sans({
+const sans = Instrument_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -30,7 +30,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${disp.variable} ${mono.variable} ${sans.variable}`}>
-      <body>{children}</body>
+      <body>
+        <div className="report">{children}</div>
+      </body>
     </html>
   );
 }

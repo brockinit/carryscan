@@ -1,16 +1,16 @@
 "use client";
 
-/** Ported heat() + cash-session hatch from mockup. */
+/** Diverging heat adapted for paper theme (mint ↔ coral). */
 function heat(v: number): string {
   if (v < 0) {
-    return `rgba(239,111,108,${Math.min(0.85, 0.18 + (-v / 12) * 0.6)})`;
+    return `rgba(200,49,47,${Math.min(0.75, 0.12 + (-v / 12) * 0.55)})`;
   }
-  const t = v / 58;
+  const t = Math.min(1, v / 58);
   if (t < 0.35) {
-    return `rgb(${19 + t * 80},${26 + t * 60},${40 + t * 40})`;
+    return `rgba(12,110,94,${0.06 + t * 0.25})`;
   }
   const u = (t - 0.35) / 0.65;
-  return `rgb(${45 + u * 210},${47 + u * 164},${66 + u * 56})`;
+  return `rgba(12,110,94,${0.2 + u * 0.55})`;
 }
 
 type Props = {
@@ -21,33 +21,27 @@ type Props = {
 
 export function FundingClock({ days, cells, weekendPremium }: Props) {
   return (
-    <section className="mt-5 border border-[var(--line)] bg-[var(--panel)]" aria-label="Funding clock heatmap">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--line)] px-[18px] py-3.5">
-        <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
-          Funding clock · avg APR by hour, trailing 90d · ET
-        </h2>
-        <div className="font-sans text-xs text-[var(--muted)]">
+    <section className="panel fade d2" aria-label="Funding clock heatmap">
+      <div className="shead">
+        <h2>Funding clock · avg APR by hour, trailing 90d · ET</h2>
+        <div className="note">
           Weekend cells run{" "}
-          <b className="font-medium text-[var(--gold-hi)]">
+          <b>
             {weekendPremium > 0 ? "+" : ""}
             {weekendPremium.toFixed(1)} pts
           </b>{" "}
           hotter than weekdays. Carry lives where the cash market sleeps.
         </div>
       </div>
-      <div className="overflow-x-auto p-[18px]">
+      <div className="pad" style={{ overflowX: "auto" }}>
         <div
-          className="grid min-w-[820px] gap-0.5"
-          style={{ gridTemplateColumns: "52px repeat(24, minmax(22px, 1fr))" }}
+          className="clock"
           role="img"
           aria-label="Heatmap of average funding APR by day of week and hour"
         >
           <div />
           {Array.from({ length: 24 }, (_, h) => (
-            <div
-              key={h}
-              className="font-mono text-center text-[9.5px] text-[var(--faint)]"
-            >
+            <div key={h} className="hlab">
               {h % 3 === 0 ? String(h).padStart(2, "0") : ""}
             </div>
           ))}
@@ -56,22 +50,27 @@ export function FundingClock({ days, cells, weekendPremium }: Props) {
           ))}
         </div>
       </div>
-      <div className="font-mono flex flex-wrap items-center gap-3 px-[18px] pb-4 text-[10.5px] text-[var(--muted)]">
+      <div className="legend">
         <span>−20</span>
         <span
-          className="h-2 w-[180px] rounded-[1px]"
           style={{
+            width: 180,
+            height: 8,
+            borderRadius: 1,
             background:
-              "linear-gradient(90deg,#EF6F6C,#131A28 32%,#6B5A3E 55%,#E8B54D 80%,#FFD37A)",
+              "linear-gradient(90deg,#c8312f,#f7f6f3 32%,#a8d5ce 55%,#0c6e5e 80%,#053f37)",
           }}
           aria-hidden
         />
         <span>+60 APR pts</span>
         <span
-          className="ml-[18px] h-2.5 w-4 rounded-[1px]"
           style={{
+            marginLeft: 18,
+            width: 16,
+            height: 10,
+            borderRadius: 1,
             background:
-              "repeating-linear-gradient(135deg,#2A3350 0 3px,rgba(12,17,27,.55) 3px 5px)",
+              "repeating-linear-gradient(135deg,#d8dcd5 0 3px,rgba(10,10,10,.08) 3px 5px)",
           }}
           aria-hidden
         />
@@ -92,18 +91,18 @@ function DayRow({
 }) {
   return (
     <>
-      <div className="font-mono self-center text-[10.5px] text-[var(--muted)]">
-        {day}
-      </div>
+      <div className="lab">{day}</div>
       {cells.map((v, h) => {
         const cash = d < 5 && h >= 10 && h <= 15;
         return (
           <div
             key={`${d}-${h}`}
-            className={`rounded-[1px] hover:z-[2] hover:outline hover:outline-1 hover:outline-[var(--gold-hi)] ${
-              cash ? "cash-cell" : ""
-            }`}
-            style={{ aspectRatio: "1.35/1", background: heat(v) }}
+            className={cash ? "cash-cell" : undefined}
+            style={{
+              aspectRatio: "1.35/1",
+              borderRadius: 1,
+              background: heat(v),
+            }}
             title={`${day} ${String(h).padStart(2, "0")}:00 · ${v > 0 ? "+" : ""}${v.toFixed(1)} APR pts`}
           />
         );
