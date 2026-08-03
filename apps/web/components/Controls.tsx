@@ -8,6 +8,9 @@ type Props = {
   onSearch: (v: string) => void;
   typeFilter: "all" | "stock" | "etf_proxy";
   onTypeFilter: (v: "all" | "stock" | "etf_proxy") => void;
+  dexFilter: string;
+  onDexFilter: (v: string) => void;
+  dexOptions: string[];
   params: CarryParams;
   onParams: (patch: Partial<CarryParams>) => void;
 };
@@ -17,6 +20,9 @@ export function Controls({
   onSearch,
   typeFilter,
   onTypeFilter,
+  dexFilter,
+  onDexFilter,
+  dexOptions,
   params,
   onParams,
 }: Props) {
@@ -77,6 +83,29 @@ export function Controls({
           </button>
         ))}
       </div>
+      {dexOptions.length > 0 && (
+        <div className="pills" role="group" aria-label="HIP-3 dex">
+          <button
+            type="button"
+            className="pill"
+            aria-pressed={dexFilter === "all"}
+            onClick={() => onDexFilter("all")}
+          >
+            All dexs
+          </button>
+          {dexOptions.map((d) => (
+            <button
+              key={d}
+              type="button"
+              className="pill"
+              aria-pressed={dexFilter === d}
+              onClick={() => onDexFilter(d)}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      )}
       <label className="param">
         horizon
         <span className="pills">
@@ -94,7 +123,9 @@ export function Controls({
         </span>
       </label>
       <label className="param">
-        <abbr title="Annualized cost of capital on your hedge leg">hedge borrow</abbr>
+        <abbr title="Fallback borrow APR when a name has no IBKR/CSV/indicative default or override">
+          fallback borrow
+        </abbr>
         <input
           value={borrowStr}
           inputMode="decimal"

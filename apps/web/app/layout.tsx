@@ -21,8 +21,9 @@ const sans = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CarryScan — HIP-3 funding & basis",
-  description: "Funding & basis on Hyperliquid HIP-3 equity/index perps",
+  title: "CarryScan — HIP-3 carry & positioning",
+  description:
+    "Net carry, positioning radar, weekly reports, and basket tools for Hyperliquid HIP-3 equity perps",
 };
 
 export default function RootLayout({

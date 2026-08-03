@@ -9,6 +9,7 @@ type Props = {
   weekendPremium: number | null;
   totalOi: number | null;
   marketCount: number;
+  dexCount?: number | null;
 };
 
 export function SummaryStrip({
@@ -18,6 +19,7 @@ export function SummaryStrip({
   weekendPremium,
   totalOi,
   marketCount,
+  dexCount,
 }: Props) {
   const tick = richest?.coin?.includes(":")
     ? richest.coin.split(":")[1]
@@ -78,7 +80,9 @@ export function SummaryStrip({
           ) : (
             <>
               {formatOi(totalOi)}
-              <small>Σ xyz</small>
+              <small>
+                Σ {dexCount != null ? `${dexCount} dexs` : "HIP-3"}
+              </small>
             </>
           )}
         </div>

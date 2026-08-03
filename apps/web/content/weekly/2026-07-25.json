@@ -1,0 +1,23 @@
+{
+  "week_of": "2026-07-25",
+  "published_at": "2026-07-27T18:00:00.000Z",
+  "headline": "HIP-3 scorecard · week of 2026-07-25",
+  "summary": "Sample scorecard placeholder — replace via `npm run weekly` or the Sunday automation after prod DB + ingest are live.",
+  "findings": [
+    {
+      "title": "Placeholder report",
+      "body": "Regenerate from live /api/markets once Timescale + ingest are wired. Acute spikes, richest net carry, and weekend premium will populate here.",
+      "severity": "info",
+      "theme": "regime"
+    }
+  ],
+  "top_carry": [],
+  "regimes": {
+    "acute": [],
+    "long_crowded": [],
+    "short_crowded": []
+  },
+  "weekend_note": "No weekend premium in this placeholder — check heatmaps after backfill.",
+  "as_of": null,
+  "source": "manual"
+}

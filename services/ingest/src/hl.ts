@@ -67,6 +67,15 @@ export class HLClient {
     return [data[0], data[1]];
   }
 
+  clearinghouseState(user: string, dex?: string) {
+    const body: Record<string, unknown> = {
+      type: "clearinghouseState",
+      user,
+    };
+    if (dex != null && dex !== "") body.dex = dex;
+    return this.post(body);
+  }
+
   fundingHistory(coin: string, startTime: number, endTime?: number) {
     const body: Record<string, unknown> = {
       type: "fundingHistory",
@@ -101,7 +110,9 @@ export class HLClient {
   }
 }
 
-export type Meta = { universe: Array<{ name: string }> };
+export type Meta = {
+  universe: Array<{ name: string; maxLeverage?: number }>;
+};
 export type AssetCtx = {
   funding?: string;
   openInterest?: string;

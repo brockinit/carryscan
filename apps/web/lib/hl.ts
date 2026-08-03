@@ -58,16 +58,53 @@ export async function fetchXyzCtxs(): Promise<{
   byCoin: Map<string, AssetCtx>;
   asOf: string;
 }> {
-  const data = (await hlPost({ type: "metaAndAssetCtxs", dex: "xyz" })) as [
-    { universe: Array<{ name: string }> },
+  return fetchDexCtxs("xyz");
+}
+
+export async function fetchDexCtxs(dex: string): Promise<{
+  byCoin: Map<string, AssetCtx & { maxLeverage?: number | null }>;
+  asOf: string;
+}> {
+  const data = (await hlPost({ type: "metaAndAssetCtxs", dex })) as [
+    { universe: Array<{ name: string; maxLeverage?: number }> },
     AssetCtx[],
   ];
   const [meta, ctxs] = data;
-  const byCoin = new Map<string, AssetCtx>();
+  const byCoin = new Map<string, AssetCtx & { maxLeverage?: number | null }>();
   meta.universe.forEach((u, i) => {
-    if (ctxs[i]) byCoin.set(u.name, ctxs[i]);
+    if (ctxs[i]) {
+      byCoin.set(u.name, {
+        ...ctxs[i],
+        maxLeverage: u.maxLeverage ?? null,
+      });
+    }
   });
   return { byCoin, asOf: new Date().toISOString() };
+}
+
+/** List HIP-3 dex names (excludes null main-dex slot). */
+export async function fetchHip3DexNames(): Promise<string[]> {
+  try {
+    const raw = (await hlPost({ type: "perpDexs" })) as Array<{
+      name?: string;
+    } | null>;
+    const names = (raw || [])
+      .filter((d): d is { name: string } => Boolean(d && d.name))
+      .map((d) => d.name);
+    if (!names.includes("xyz")) names.unshift("xyz");
+    return names;
+  } catch {
+    return ["xyz"];
+  }
+}
+
+export async function fetchClearinghouseState(user: string, dex?: string) {
+  const body: Record<string, unknown> = {
+    type: "clearinghouseState",
+    user,
+  };
+  if (dex) body.dex = dex;
+  return hlPost(body);
 }
 
 export async function fetchFundingHistory(

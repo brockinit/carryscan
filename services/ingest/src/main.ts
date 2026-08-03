@@ -6,6 +6,9 @@ import * as candles from "./jobs/candles.js";
 import * as closes from "./jobs/closes.js";
 import * as earnings from "./jobs/earnings.js";
 import * as nightly from "./jobs/nightly.js";
+import * as discover from "./jobs/discover.js";
+import * as borrow from "./jobs/borrow.js";
+import * as margin from "./jobs/margin.js";
 import { getPool } from "./db.js";
 
 const ET = "America/New_York";
@@ -23,11 +26,14 @@ async function backfill() {
   console.log(JSON.stringify({ msg: "backfill starting" }));
   const hl = new HLClient();
   try {
+    await discover.run(hl);
     await funding.run(hl, true);
     await candles.run(hl, true, 120);
     await closes.run(180);
     await earnings.run();
+    await borrow.run();
     await snapshot.run(hl);
+    await margin.run(hl);
     await nightly.run();
   } finally {
     await getPool().end();
@@ -45,20 +51,31 @@ function schedule() {
   cron.schedule("5 * * * *", () => withHl((hl) => candles.run(hl)), {
     timezone: ET,
   });
+  cron.schedule("*/5 * * * *", () => withHl((hl) => margin.run(hl)), {
+    timezone: ET,
+  });
   cron.schedule("20 16 * * 1-5", () => closes.run().catch(console.error), {
     timezone: ET,
   });
+  cron.schedule("30 8 * * 1-5", () => borrow.run().catch(console.error), {
+    timezone: ET,
+  });
   cron.schedule("0 18 * * 0", () => earnings.run().catch(console.error), {
+    timezone: ET,
+  });
+  cron.schedule("15 0 * * *", () => withHl((hl) => discover.run(hl)), {
     timezone: ET,
   });
   cron.schedule("30 0 * * *", () => nightly.run().catch(console.error), {
     timezone: ET,
   });
 
-  console.log(JSON.stringify({ msg: "startup snapshot" }));
-  withHl((hl) => snapshot.run(hl)).then(() =>
-    console.log(JSON.stringify({ msg: "scheduler running" })),
-  );
+  console.log(JSON.stringify({ msg: "startup discover+snapshot" }));
+  withHl(async (hl) => {
+    await discover.run(hl);
+    await snapshot.run(hl);
+    await margin.run(hl);
+  }).then(() => console.log(JSON.stringify({ msg: "scheduler running" })));
 }
 
 async function once(job: string) {
@@ -69,6 +86,9 @@ async function once(job: string) {
     closes: () => closes.run(),
     earnings: () => earnings.run(),
     nightly: () => nightly.run(),
+    discover: () => discover.run(),
+    borrow: () => borrow.run(),
+    margin: () => margin.run(),
   };
   const fn = map[job];
   if (!fn) throw new Error(`unknown job ${job}`);

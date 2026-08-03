@@ -17,6 +17,8 @@ import { FundingChart } from "@/components/FundingChart";
 import { CarryCalc } from "@/components/CarryCalc";
 import { GapsTable } from "@/components/GapsTable";
 import { EarningsPanel } from "@/components/EarningsPanel";
+import { SiteNav } from "@/components/SiteNav";
+import { defaultBorrow } from "@/lib/borrow";
 
 const fetcher = async (url: string) => {
   const r = await fetch(url);
@@ -43,8 +45,10 @@ export default function MarketDetailPage({
 
   const [carryParams, setCarryParams] = useState<CarryParams>(DEFAULT_PARAMS);
   useEffect(() => {
-    setCarryParams(loadParams());
-  }, []);
+    const p = loadParams();
+    const tick = coin.includes(":") ? coin.split(":")[1] : coin;
+    setCarryParams({ ...p, borrowPct: defaultBorrow(tick, p.borrowPct) });
+  }, [coin]);
 
   const update = (patch: Partial<CarryParams>) => {
     setCarryParams((p) => {
@@ -58,6 +62,7 @@ export default function MarketDetailPage({
     const known = (error as { body?: { known?: string[] } }).body?.known || [];
     return (
       <>
+        <SiteNav />
         <div className="crumb">
           <Link href="/">← All markets</Link>
         </div>
@@ -84,6 +89,7 @@ export default function MarketDetailPage({
 
   return (
     <>
+      <SiteNav />
       <div className="crumb fade">
         <Link href="/">← All markets</Link>
       </div>

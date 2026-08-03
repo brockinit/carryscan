@@ -2,11 +2,18 @@ import { feeDrag, netCarry } from "@/lib/carry";
 import {
   SEED_MARKETS,
   etDowHour,
+  fetchDexCtxs,
   fetchFundingHistory,
-  fetchXyzCtxs,
+  fetchHip3DexNames,
   hourlyToApr,
+  sparkFromRates,
   windowApr,
 } from "@/lib/hl";
+import { attachPositioning, positioningSummary } from "@/lib/positioning";
+import {
+  attachDeskFields,
+  fundingDistFromRates,
+} from "@/lib/desk";
 
 function num(v: string | undefined): number | null {
   if (v == null || v === "") return null;
@@ -21,44 +28,137 @@ function median(nums: number[]): number {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx]);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return out;
+}
+
 /** Live Hyperliquid dashboard payload when DATABASE_URL is unavailable. */
 export async function liveMarketsPayload() {
-  const { byCoin, asOf } = await fetchXyzCtxs();
+  const dexs = await fetchHip3DexNames();
+  const now = Date.now();
+  const since = now - 30 * 86400 * 1000;
 
-  const markets = SEED_MARKETS.flatMap((m) => {
-    const ctx = byCoin.get(m.coin);
-    if (!ctx) return [];
+  // Build coin universe from all HIP-3 dexs; prefer seed metadata when known
+  const seedByCoin = new Map(SEED_MARKETS.map((m) => [m.coin, m]));
+  type LiveCoin = {
+    coin: string;
+    dex: string;
+    ticker: string;
+    name: string;
+    ref_type: "stock" | "etf_proxy" | "none";
+    ctx: Awaited<ReturnType<typeof fetchDexCtxs>>["byCoin"] extends Map<
+      string,
+      infer V
+    >
+      ? V
+      : never;
+  };
+  const coins: LiveCoin[] = [];
+  let asOf = new Date().toISOString();
+  for (const dex of dexs) {
+    try {
+      const { byCoin, asOf: t } = await fetchDexCtxs(dex);
+      asOf = t;
+      for (const [coin, ctx] of Array.from(byCoin.entries())) {
+        const seed = seedByCoin.get(coin);
+        const ticker = coin.includes(":") ? coin.split(":")[1] : coin;
+        coins.push({
+          coin,
+          dex,
+          ticker: seed?.ticker ?? ticker,
+          name: seed?.name ?? `Unknown ${ticker}`,
+          ref_type: seed?.ref_type ?? "none",
+          ctx,
+        });
+      }
+    } catch (e) {
+      console.warn("live dex failed", dex, e);
+    }
+  }
+
+  // Cap live history pull for serverless time limits
+  const capped = coins.slice(0, 40);
+
+  const enriched = await mapPool(capped, 4, async (m) => {
+    const ctx = m.ctx;
     const mark = num(ctx.markPx) ?? 0;
     const oiBase = num(ctx.openInterest) ?? 0;
     const funding = num(ctx.funding) ?? 0;
     const oracle = num(ctx.oraclePx);
     const aprNow = hourlyToApr(funding);
-    // Without DB history, window APRs fall back to the live hourly rate
     const basisPct =
       oracle && oracle !== 0 ? ((mark - oracle) / oracle) * 100 : null;
 
-    return [
-      {
-        coin: m.coin,
-        ticker: m.ticker,
-        name: m.name,
-        ref_type: m.ref_type,
-        mark,
-        basis_pct: basisPct,
-        apr_now: aprNow,
-        apr_1d: aprNow,
-        apr_7d: aprNow,
-        apr_30d: aprNow,
-        oi_usd: oiBase * mark,
-        spark: Array(14).fill(Math.round(aprNow * 100) / 100),
-      },
-    ];
+    let ticks: Array<{ time: number; fundingRate: number }> = [];
+    try {
+      ticks = await fetchFundingHistory(m.coin, since, now);
+    } catch (e) {
+      console.warn("funding history failed", m.coin, e);
+    }
+
+    const rates1d = ticks
+      .filter((t) => t.time >= now - 86400 * 1000)
+      .map((t) => t.fundingRate);
+    const rates7d = ticks
+      .filter((t) => t.time >= now - 7 * 86400 * 1000)
+      .map((t) => t.fundingRate);
+    const rates30d = ticks.map((t) => t.fundingRate);
+
+    return {
+      coin: m.coin,
+      dex: m.dex,
+      ticker: m.ticker,
+      name: m.name,
+      ref_type: m.ref_type,
+      mark,
+      basis_pct: basisPct,
+      basis_oracle_pct: basisPct,
+      basis_nbbo_pct: null as number | null,
+      basis_vwap_pct: null as number | null,
+      max_leverage:
+        ctx.maxLeverage != null ? Number(ctx.maxLeverage) : null,
+      apr_now: aprNow,
+      apr_1d: windowApr(rates1d, funding),
+      apr_7d: windowApr(rates7d, funding),
+      apr_30d: windowApr(rates30d, funding),
+      oi_usd: oiBase * mark,
+      spark: sparkFromRates(ticks, 14),
+      _rates30d: rates30d,
+    };
   });
 
+  const dist = new Map(
+    enriched.map((m) => [m.coin, fundingDistFromRates(m._rates30d)]),
+  );
+  const stripped = enriched.map((m) => {
+    const { _rates30d, ...rest } = m;
+    void _rates30d;
+    return rest;
+  });
+  const withDesk = attachDeskFields(stripped, {
+    basis_ref: "oracle",
+    dist,
+  });
+  const markets = attachPositioning(withDesk);
   const defaults = { borrow_pct: 5.5, fees_rt_bps: 10, horizon: "7d" as const };
   const nets = markets.map((m) => ({
     coin: m.coin,
-    net: netCarry(m.apr_7d, defaults.borrow_pct, defaults.fees_rt_bps, 30),
+    net: netCarry(m.apr_7d, m.borrow_default_pct, defaults.fees_rt_bps, 30),
   }));
   nets.sort((a, b) => b.net - a.net);
 
@@ -74,7 +174,9 @@ export async function liveMarketsPayload() {
       median_apr_7d: median(markets.map((m) => m.apr_7d)),
       weekend_premium_pts: 0,
       total_oi_usd: markets.reduce((s, m) => s + m.oi_usd, 0),
+      dex_count: dexs.length,
     },
+    positioning_summary: positioningSummary(markets),
     markets,
     _fee_drag_pts: feeDrag(defaults.fees_rt_bps, 30),
   };
@@ -89,7 +191,8 @@ export async function liveMarketDetail(coin: string) {
     };
   }
 
-  const { byCoin, asOf } = await fetchXyzCtxs();
+  const dex = seed.coin.includes(":") ? seed.coin.split(":")[0] : "xyz";
+  const { byCoin, asOf } = await fetchDexCtxs(dex);
   const ctx = byCoin.get(coin);
   if (!ctx) {
     return {
@@ -111,7 +214,6 @@ export async function liveMarketDetail(coin: string) {
     .filter((t) => t.time >= now - 86400 * 1000)
     .map((t) => t.fundingRate);
 
-  // Heatmap 7×24 from 90d ticks
   const buckets = new Map<string, number[]>();
   for (const t of ticks) {
     const [d, h] = etDowHour(t.time);
@@ -146,7 +248,6 @@ export async function liveMarketDetail(coin: string) {
   const weekendPremium =
     (wendN ? wend / wendN : 0) - (weekN ? week / weekN : 0);
 
-  // 30d daily series
   const byDay = new Map<string, number[]>();
   for (const t of ticks) {
     const key = new Date(t.time).toLocaleDateString("en-CA", {

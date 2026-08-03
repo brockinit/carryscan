@@ -1,0 +1,23 @@
+# Fly.io deploy for CarryScan ingest worker
+# fly apps create carryscan-ingest
+# fly secrets set DATABASE_URL=... MASSIVE_API_KEY=... IBKR_FLEX_TOKEN=... IBKR_FLEX_QUERY_ID=... HL_WATCH_ADDRESS=...
+# fly deploy --config services/ingest/fly.toml --dockerfile services/ingest/Dockerfile
+
+app = "carryscan-ingest"
+primary_region = "iad"
+
+[build]
+  # Deploy from repo root: fly deploy --config services/ingest/fly.toml
+  dockerfile = "services/ingest/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  EARNINGS_CSV = "/app/db/seed/earnings.csv"
+
+[processes]
+  app = "npx tsx src/migrate.ts && npx tsx src/main.ts"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

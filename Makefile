@@ -1,4 +1,4 @@
-.PHONY: dev migrate test backfill deploy down logs
+.PHONY: dev migrate migrate-remote test backfill weekly deploy down logs
 
 dev:
 	docker compose up -d --build db
@@ -9,9 +9,16 @@ dev:
 
 migrate:
 	docker compose exec -T db psql -U carryscan -d carryscan -f /docker-entrypoint-initdb.d/000_init.sql || true
+	cd services/ingest && DATABASE_URL=$${DATABASE_URL:-postgresql://carryscan:carryscan@localhost:5432/carryscan} npm run migrate
+
+migrate-remote:
+	cd services/ingest && npm run migrate
 
 backfill:
 	docker compose run --rm ingest npx tsx src/main.ts --backfill
+
+weekly:
+	cd services/ingest && PUBLIC_BASE_URL=$${PUBLIC_BASE_URL:-https://carryscan.vercel.app} npm run weekly
 
 test:
 	cd services/ingest && npm test

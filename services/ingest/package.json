@@ -7,6 +7,8 @@
     "start": "tsx src/main.ts",
     "backfill": "tsx src/main.ts --backfill",
     "once": "tsx src/main.ts --once",
+    "migrate": "tsx src/migrate.ts",
+    "weekly": "tsx src/weeklyReport.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { getPool, hasDatabase } from "@/lib/db";
 import { feeDrag, netCarry } from "@/lib/carry";
 import { liveMarketsPayload } from "@/lib/live";
+import { attachPositioning, positioningSummary } from "@/lib/positioning";
+import {
+  attachDeskFields,
+  fundingDistFromRates,
+  stressFromGaps,
+  type FundingDist,
+  type Stress,
+} from "@/lib/desk";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,8 +26,10 @@ async function fromDb() {
   const pool = getPool();
   const { rows: markets } = await pool.query(`
       SELECT
-        m.coin, m.cash_ticker AS ticker, m.name, m.ref_type,
+        m.id, m.dex, m.coin, m.cash_ticker AS ticker, m.name, m.ref_type,
         ml.as_of, ml.mark, ml.basis_pct,
+        ml.basis_oracle_pct, ml.basis_nbbo_pct, ml.basis_vwap_pct,
+        ml.borrow_pct, ml.borrow_source, ml.max_leverage,
         ml.apr_now, ml.apr_1d, ml.apr_7d, ml.apr_30d,
         ml.oi_usd, ml.spark
       FROM markets m
@@ -38,13 +48,58 @@ async function fromDb() {
   const defaults = { borrow_pct: 5.5, fees_rt_bps: 10, horizon: "7d" as const };
   const fee = feeDrag(defaults.fees_rt_bps, 30);
 
-  const mapped = markets.map((m) => ({
+  const since = new Date(Date.now() - 30 * 86400 * 1000);
+  const { rows: rateRows } = await pool.query(
+    `SELECT market_id, rate FROM funding_ticks WHERE ts >= $1 ORDER BY market_id, ts`,
+    [since],
+  );
+  const ratesByMarket = new Map<number, number[]>();
+  for (const r of rateRows) {
+    const id = Number(r.market_id);
+    if (!ratesByMarket.has(id)) ratesByMarket.set(id, []);
+    ratesByMarket.get(id)!.push(Number(r.rate));
+  }
+
+  const { rows: gapRows } = await pool.query(
+    `SELECT market_id, short_mae, funding_banked FROM weekend_gaps`,
+  );
+  const gapsByMarket = new Map<
+    number,
+    Array<{ short_mae: number; funding_banked: number }>
+  >();
+  for (const g of gapRows) {
+    const id = Number(g.market_id);
+    if (!gapsByMarket.has(id)) gapsByMarket.set(id, []);
+    gapsByMarket.get(id)!.push({
+      short_mae: Number(g.short_mae),
+      funding_banked: Number(g.funding_banked),
+    });
+  }
+
+  const dist = new Map<string, FundingDist>();
+  const stress = new Map<string, Stress | null>();
+  for (const m of markets) {
+    const coin = m.coin as string;
+    const id = Number(m.id);
+    dist.set(coin, fundingDistFromRates(ratesByMarket.get(id) ?? []));
+    stress.set(coin, stressFromGaps(gapsByMarket.get(id) ?? []));
+  }
+
+  const base = markets.map((m) => ({
     coin: m.coin as string,
+    dex: (m.dex as string) || "xyz",
     ticker: (m.ticker as string) || String(m.coin).split(":")[1],
     name: m.name as string,
     ref_type: m.ref_type as "stock" | "etf_proxy" | "none",
     mark: Number(m.mark ?? 0),
     basis_pct: m.basis_pct == null ? null : Number(m.basis_pct),
+    basis_oracle_pct:
+      m.basis_oracle_pct == null ? null : Number(m.basis_oracle_pct),
+    basis_nbbo_pct: m.basis_nbbo_pct == null ? null : Number(m.basis_nbbo_pct),
+    basis_vwap_pct: m.basis_vwap_pct == null ? null : Number(m.basis_vwap_pct),
+    borrow_pct: m.borrow_pct == null ? null : Number(m.borrow_pct),
+    borrow_source: (m.borrow_source as string) || null,
+    max_leverage: m.max_leverage == null ? null : Number(m.max_leverage),
     apr_now: Number(m.apr_now ?? 0),
     apr_1d: Number(m.apr_1d ?? 0),
     apr_7d: Number(m.apr_7d ?? 0),
@@ -52,6 +107,13 @@ async function fromDb() {
     oi_usd: Number(m.oi_usd ?? 0),
     spark: Array.isArray(m.spark) ? (m.spark as number[]) : [],
   }));
+
+  const withDesk = attachDeskFields(base, {
+    basis_ref: "cash_close",
+    dist,
+    stress,
+  });
+  const mapped = attachPositioning(withDesk);
 
   const { rows: premRows } = await pool.query(`
       SELECT m.id, ml.oi_usd,
@@ -77,10 +139,11 @@ async function fromDb() {
     oiSum += oi;
   }
   const weekendPremium = oiSum > 0 ? wSum / oiSum : 0;
+  const dexCount = new Set(mapped.map((m) => m.dex)).size;
 
   const nets = mapped.map((m) => ({
     coin: m.coin,
-    net: netCarry(m.apr_7d, defaults.borrow_pct, defaults.fees_rt_bps, 30),
+    net: netCarry(m.apr_7d, m.borrow_default_pct, defaults.fees_rt_bps, 30),
   }));
   nets.sort((a, b) => b.net - a.net);
   const richest = nets[0]
@@ -97,7 +160,9 @@ async function fromDb() {
       median_apr_7d: median(mapped.map((m) => m.apr_7d)),
       weekend_premium_pts: weekendPremium,
       total_oi_usd: mapped.reduce((s, m) => s + m.oi_usd, 0),
+      dex_count: dexCount,
     },
+    positioning_summary: positioningSummary(mapped),
     markets: mapped,
     _fee_drag_pts: fee,
   };

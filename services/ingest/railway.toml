@@ -1,0 +1,11 @@
+# Railway: set root to repo, Dockerfile path services/ingest/Dockerfile
+# Required env: DATABASE_URL, optional MASSIVE_API_KEY, IBKR_*, HL_WATCH_ADDRESS
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "services/ingest/Dockerfile"
+
+[deploy]
+startCommand = "npx tsx src/migrate.ts && npx tsx src/main.ts"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

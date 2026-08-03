@@ -7,7 +7,10 @@ const INTERVALS: Record<string, number> = {
   snapshot: 60,
   funding: 3600,
   candles: 3600,
+  margin: 300,
   closes: 86400,
+  borrow: 86400,
+  discover: 86400,
   earnings_refresh: 7 * 86400,
   nightly: 86400,
 };

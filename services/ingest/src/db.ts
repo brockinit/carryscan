@@ -157,6 +157,12 @@ export async function upsertMetricsLive(row: {
   as_of: Date;
   mark: number | null;
   basis_pct: number | null;
+  basis_oracle_pct?: number | null;
+  basis_nbbo_pct?: number | null;
+  basis_vwap_pct?: number | null;
+  borrow_pct?: number | null;
+  borrow_source?: string | null;
+  max_leverage?: number | null;
   apr_now: number;
   apr_1d: number;
   apr_7d: number;
@@ -166,10 +172,18 @@ export async function upsertMetricsLive(row: {
 }) {
   await getPool().query(
     `INSERT INTO market_metrics_live
-       (market_id, as_of, mark, basis_pct, apr_now, apr_1d, apr_7d, apr_30d, oi_usd, spark)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)
+       (market_id, as_of, mark, basis_pct, basis_oracle_pct, basis_nbbo_pct, basis_vwap_pct,
+        borrow_pct, borrow_source, max_leverage,
+        apr_now, apr_1d, apr_7d, apr_30d, oi_usd, spark)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)
      ON CONFLICT (market_id) DO UPDATE SET
        as_of=EXCLUDED.as_of, mark=EXCLUDED.mark, basis_pct=EXCLUDED.basis_pct,
+       basis_oracle_pct=EXCLUDED.basis_oracle_pct,
+       basis_nbbo_pct=EXCLUDED.basis_nbbo_pct,
+       basis_vwap_pct=EXCLUDED.basis_vwap_pct,
+       borrow_pct=EXCLUDED.borrow_pct,
+       borrow_source=EXCLUDED.borrow_source,
+       max_leverage=EXCLUDED.max_leverage,
        apr_now=EXCLUDED.apr_now, apr_1d=EXCLUDED.apr_1d, apr_7d=EXCLUDED.apr_7d,
        apr_30d=EXCLUDED.apr_30d, oi_usd=EXCLUDED.oi_usd, spark=EXCLUDED.spark`,
     [
@@ -177,6 +191,12 @@ export async function upsertMetricsLive(row: {
       row.as_of,
       row.mark,
       row.basis_pct,
+      row.basis_oracle_pct ?? null,
+      row.basis_nbbo_pct ?? null,
+      row.basis_vwap_pct ?? null,
+      row.borrow_pct ?? null,
+      row.borrow_source ?? null,
+      row.max_leverage ?? null,
       row.apr_now,
       row.apr_1d,
       row.apr_7d,
@@ -185,4 +205,60 @@ export async function upsertMetricsLive(row: {
       JSON.stringify(row.spark),
     ],
   );
+}
+
+export async function latestBorrow(
+  ticker: string,
+): Promise<{ fee_rate_pct: number; source: string } | null> {
+  const { rows } = await getPool().query(
+    `SELECT fee_rate_pct, source FROM borrow_rates
+     WHERE ticker = $1 ORDER BY as_of DESC LIMIT 1`,
+    [ticker.toUpperCase()],
+  );
+  if (!rows[0]) return null;
+  return {
+    fee_rate_pct: Number(rows[0].fee_rate_pct),
+    source: String(rows[0].source),
+  };
+}
+
+export async function upsertQuote(
+  ticker: string,
+  ts: Date,
+  bid: number | null,
+  ask: number | null,
+  mid: number | null,
+  last: number | null,
+) {
+  await getPool().query(
+    `INSERT INTO equity_quotes (ticker, ts, bid, ask, mid, last)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (ticker, ts) DO UPDATE SET
+       bid=EXCLUDED.bid, ask=EXCLUDED.ask, mid=EXCLUDED.mid, last=EXCLUDED.last`,
+    [ticker, ts, bid, ask, mid, last],
+  );
+}
+
+export async function upsertVwap(ticker: string, d: string, vwap: number) {
+  await getPool().query(
+    `INSERT INTO equity_vwap (ticker, d, vwap) VALUES ($1,$2,$3)
+     ON CONFLICT (ticker, d) DO UPDATE SET vwap = EXCLUDED.vwap`,
+    [ticker, d, vwap],
+  );
+}
+
+export async function latestVwap(ticker: string): Promise<number | null> {
+  const { rows } = await getPool().query(
+    `SELECT vwap FROM equity_vwap WHERE ticker = $1 ORDER BY d DESC LIMIT 1`,
+    [ticker],
+  );
+  return rows[0]?.vwap != null ? Number(rows[0].vwap) : null;
+}
+
+export async function listActiveDexs(): Promise<string[]> {
+  const { rows } = await getPool().query(
+    `SELECT DISTINCT dex FROM markets WHERE active ORDER BY dex`,
+  );
+  const dexs = rows.map((r) => r.dex as string);
+  return dexs.length ? dexs : ["xyz"];
 }
