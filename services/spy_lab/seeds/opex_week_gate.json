@@ -1,0 +1,18 @@
+{
+  "id": "opex_underlying_gate_v1",
+  "title": "OPEX day long-SPY gate (sanity / control)",
+  "structure": "underlying_gate",
+  "hold_days": 2,
+  "entry": {},
+  "event_gates": {
+    "require_any": ["opex", "triple_witching"],
+    "exclude_any": []
+  },
+  "decision_time": "pre_open",
+  "cost_bps": 2,
+  "train_start": "2018-01-01",
+  "train_end": "2022-12-31",
+  "test_start": "2023-01-01",
+  "test_end": "2025-12-31",
+  "min_trades": 40
+}

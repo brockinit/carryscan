@@ -1,0 +1,43 @@
+"""Experiment specification schema."""
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class EventGates(BaseModel):
+    require_any: list[str] = Field(default_factory=list)
+    exclude_any: list[str] = Field(default_factory=list)
+
+
+class EntryRules(BaseModel):
+    rel_vol_max: float | None = None
+    rel_vol_min: float | None = None
+    abs_gap_max: float | None = None
+    abs_gap_min: float | None = None
+    gap_side: Literal["down", "up", "any"] | None = "any"
+
+
+class ExperimentSpec(BaseModel):
+    id: str
+    title: str
+    universe: str = "SPY"
+    structure: Literal["iv_short_30d", "rr_fade_30d", "underlying_gate"]
+    hold_days: int = 5
+    entry: EntryRules = Field(default_factory=EntryRules)
+    event_gates: EventGates = Field(default_factory=EventGates)
+    decision_time: Literal["pre_open", "before_moc", "next_open"] = "pre_open"
+    cost_bps: float = 5.0  # round-trip friction proxy
+    train_start: str
+    train_end: str
+    test_start: str
+    test_end: str
+    min_trades: int = 40
+    kill_if_test_net_le_zero: bool = True
+    kill_if_decay_gt: float = 0.5  # train - test if both positive
+
+    def event_gate_keys(self) -> list[str]:
+        return list(
+            dict.fromkeys(self.event_gates.require_any + self.event_gates.exclude_any)
+        )
