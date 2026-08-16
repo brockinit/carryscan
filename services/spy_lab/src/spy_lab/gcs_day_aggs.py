@@ -17,6 +17,12 @@ def day_blob_path(prefix: str, d: date) -> str:
     return f"{prefix}/{d.year:04d}/{d.month:02d}/{d.isoformat()}.csv.gz"
 
 
+def day_gcs_uri(d: date, settings: Settings | None = None) -> str:
+    """gs:// URI for one Massive option_day_aggs file. BQ loads this in-region."""
+    settings = settings or get_settings()
+    return f"gs://{settings.gcs_bucket}/{day_blob_path(settings.gcs_day_aggs_prefix, d)}"
+
+
 def list_day_paths(
     start: date,
     end: date,

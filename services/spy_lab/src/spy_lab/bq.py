@@ -132,6 +132,92 @@ class Bq:
         self.client.query(sql).result()
         return len(norm)
 
+    def ingest_spy_day_from_gcs(self, as_of: date) -> int:
+        """Load one full-market day file in-region, keep O:SPY* only.
+
+        GCS → BigQuery load is free and does not leave Google. The laptop
+        never downloads the gzip.
+        """
+        from spy_lab.gcs_day_aggs import day_gcs_uri
+
+        uri = day_gcs_uri(as_of, self.settings)
+        tmp = self.table_id("_tmp_option_day_aggs")
+        job_config = bigquery.LoadJobConfig(
+            source_format=bigquery.SourceFormat.CSV,
+            skip_leading_rows=1,
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            schema=[
+                bigquery.SchemaField("ticker", "STRING"),
+                bigquery.SchemaField("volume", "FLOAT64"),
+                bigquery.SchemaField("open", "FLOAT64"),
+                bigquery.SchemaField("close", "FLOAT64"),
+                bigquery.SchemaField("high", "FLOAT64"),
+                bigquery.SchemaField("low", "FLOAT64"),
+                bigquery.SchemaField("window_start", "INT64"),
+                bigquery.SchemaField("transactions", "INT64"),
+            ],
+        )
+        self.client.load_table_from_uri(uri, tmp, job_config=job_config).result()
+        return self._insert_spy_from_day_aggs_tmp(tmp, as_of)
+
+    def _insert_spy_from_day_aggs_tmp(self, tmp: str, as_of: date) -> int:
+        table = self.table_id("spy_option_day")
+        # Filter query scans one loaded day (not the laptop). Cap above default
+        # in case a busy session's uncompressed CSV is large.
+        job_config = bigquery.QueryJobConfig(
+            maximum_bytes_billed=max(
+                self.settings.bq_maximum_bytes_billed, 50 * 1024**3
+            ),
+            query_parameters=[
+                bigquery.ScalarQueryParameter("d", "DATE", as_of.isoformat())
+            ],
+        )
+        self.client.query(
+            f"DELETE FROM `{table}` WHERE as_of_date = @d",
+            job_config=job_config,
+        ).result()
+        sql = f"""
+        INSERT INTO `{table}` (
+          as_of_date, ticker, root, expiry, cp, strike, o, h, l, c, v, transactions
+        )
+        SELECT
+          @d,
+          ticker,
+          'SPY',
+          PARSE_DATE('%y%m%d', REGEXP_EXTRACT(ticker, r'^O:SPY(\\d{{6}})')),
+          REGEXP_EXTRACT(ticker, r'^O:SPY\\d{{6}}([CP])'),
+          CAST(REGEXP_EXTRACT(ticker, r'^O:SPY\\d{{6}}[CP](\\d{{8}})$') AS INT64) / 1000.0,
+          open, high, low, close, volume, transactions
+        FROM `{tmp}`
+        WHERE REGEXP_CONTAINS(ticker, r'^O:SPY\\d{{6}}[CP]\\d{{8}}$')
+        """
+        job = self.client.query(sql, job_config=job_config)
+        job.result()
+        return int(job.num_dml_affected_rows or 0)
+
+    def fetch_spy_option_day(self, as_of: date) -> list[dict]:
+        table = self.table_id("spy_option_day")
+        rows = self.query(
+            f"""
+            SELECT ticker, root, expiry, cp, strike, o, h, l, c, v, transactions, iv, delta
+            FROM `{table}`
+            WHERE as_of_date = @d
+            """,
+            params=[
+                bigquery.ScalarQueryParameter("d", "DATE", as_of.isoformat())
+            ],
+        )
+        out = []
+        for r in rows:
+            rec = dict(r)
+            rec["close"] = rec.get("c")
+            rec["volume"] = rec.get("v")
+            rec["open"] = rec.get("o")
+            rec["high"] = rec.get("h")
+            rec["low"] = rec.get("l")
+            out.append(rec)
+        return out
+
     def load_spy_option_day(self, rows: Sequence[dict], as_of: date) -> int:
         if not rows:
             return 0

@@ -27,10 +27,18 @@ def main(argv: list[str] | None = None) -> None:
     u.add_argument("--start", type=_d, required=True)
     u.add_argument("--end", type=_d, required=True)
 
-    s = sub.add_parser("backfill-surfaces", help="GCS option_day_aggs → surfaces")
+    s = sub.add_parser(
+        "backfill-surfaces",
+        help="GCS option_day_aggs → surfaces (BQ in-region load by default)",
+    )
     s.add_argument("--start", type=_d, required=True)
     s.add_argument("--end", type=_d, required=True)
     s.add_argument("--no-skip", action="store_true")
+    s.add_argument(
+        "--local-download",
+        action="store_true",
+        help="Download full-market gzips to this machine (incurs GCS egress)",
+    )
 
     n = sub.add_parser("nightly", help="Underlying + FMP events + REST snapshot")
     n.add_argument("--as-of", type=_d, default=None)
@@ -70,7 +78,12 @@ def main(argv: list[str] | None = None) -> None:
     if args.cmd == "backfill-surfaces":
         from spy_lab.jobs.surfaces import run_backfill_surfaces
 
-        n = run_backfill_surfaces(args.start, args.end, skip_done=not args.no_skip)
+        n = run_backfill_surfaces(
+            args.start,
+            args.end,
+            skip_done=not args.no_skip,
+            local_download=args.local_download,
+        )
         print(f"surface days: {n}")
         return
 

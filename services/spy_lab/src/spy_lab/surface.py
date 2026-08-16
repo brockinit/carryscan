@@ -195,7 +195,7 @@ def contracts_from_day_aggs(
         occ = parse_occ(str(rec["ticker"]))
         if occ is None or occ.root != "SPY":
             continue
-        mid = float(rec.get("close") or 0)
+        mid = float(rec.get("close") or rec.get("c") or 0)
         if mid <= 0:
             continue
         out.append(
@@ -203,7 +203,7 @@ def contracts_from_day_aggs(
                 ticker=occ.ticker,
                 occ=occ,
                 mid=mid,
-                volume=float(rec.get("volume") or 0),
+                volume=float(rec.get("volume") or rec.get("v") or 0),
             )
         )
     return out
