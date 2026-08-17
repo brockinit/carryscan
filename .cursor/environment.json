@@ -1,0 +1,17 @@
+{
+  "name": "CarryScan",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "ingest",
+      "command": "cd services/ingest && DATABASE_URL=postgresql://carryscan:carryscan@localhost:5432/carryscan EARNINGS_CSV=$PWD/../../db/seed/earnings.csv npm start"
+    },
+    {
+      "name": "web",
+      "command": "cd apps/web && DATABASE_URL=postgresql://carryscan:carryscan@localhost:5432/carryscan npm run dev -- -H 0.0.0.0 -p 3000"
+    }
+  ],
+  "ports": [3000]
+}
