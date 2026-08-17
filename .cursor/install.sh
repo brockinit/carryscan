@@ -36,7 +36,9 @@ if [ ! -f /usr/lib/postgresql/${PG_VER}/lib/timescaledb.so ]; then
     --pg-config="/usr/lib/postgresql/${PG_VER}/bin/pg_config" >/dev/null
 fi
 
-if ! python3 -m venv --help >/dev/null 2>&1; then
+# `python3 -m venv --help` succeeds even when ensurepip is absent, so probe
+# ensurepip directly — that is what actually breaks venv creation.
+if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
   log "Installing python venv support"
   export DEBIAN_FRONTEND=noninteractive
   sudo apt-get update -qq
