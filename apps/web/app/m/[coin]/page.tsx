@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import useSWR from "swr";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import type { MarketDetail } from "@/lib/types";
 import {
   DEFAULT_PARAMS,
@@ -34,9 +34,9 @@ const fetcher = async (url: string) => {
 export default function MarketDetailPage({
   params,
 }: {
-  params: { coin: string };
+  params: Promise<{ coin: string }>;
 }) {
-  const coin = decodeURIComponent(params.coin);
+  const coin = decodeURIComponent(use(params).coin);
   const { data, error, isLoading } = useSWR<MarketDetail>(
     `/api/markets/${encodeURIComponent(coin)}`,
     fetcher,

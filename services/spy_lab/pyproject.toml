@@ -5,17 +5,17 @@ description = "SPY Edge Factory — Massive flat files + BigQuery research loop"
 requires-python = ">=3.11"
 dependencies = [
   "httpx>=0.28.1",
-  "numpy>=2.0",
-  "pydantic>=2.0",
-  "python-dotenv>=1.0",
-  "google-cloud-bigquery>=3.25",
-  "google-cloud-storage>=2.18",
-  "pandas>=2.2",
-  "pyarrow>=17.0",
+  "numpy>=2.5",
+  "pydantic>=2.13",
+  "python-dotenv>=1.2",
+  "google-cloud-bigquery>=3.43",
+  "google-cloud-storage>=3.13",
+  "pandas>=3.0",
+  "pyarrow>=25.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+dev = ["pytest>=9.0", "ruff>=0.16"]
 
 [project.scripts]
 spy-lab = "spy_lab.cli:main"

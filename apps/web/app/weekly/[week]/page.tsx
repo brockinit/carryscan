@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
@@ -16,10 +17,11 @@ const fetcher = async (url: string) => {
 export default function WeeklyArchivePage({
   params,
 }: {
-  params: { week: string };
+  params: Promise<{ week: string }>;
 }) {
+  const { week } = use(params);
   const { data: report, error, isLoading } = useSWR<WeeklyReport>(
-    `/api/weekly/${params.week}`,
+    `/api/weekly/${week}`,
     fetcher,
   );
 
@@ -30,7 +32,7 @@ export default function WeeklyArchivePage({
         <Link href="/weekly">← Weekly reports</Link>
       </div>
       <h1 className="page-title fade d1">
-        {isLoading ? "…" : report?.headline || `Week of ${params.week}`}
+        {isLoading ? "…" : report?.headline || `Week of ${week}`}
       </h1>
       {error && (
         <p className="page-dek" style={{ color: "var(--down)" }}>
