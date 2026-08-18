@@ -206,9 +206,9 @@ async function fromDb(coin: string) {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { coin: string } },
+  { params }: { params: Promise<{ coin: string }> },
 ) {
-  const coin = decodeCoin(params.coin);
+  const coin = decodeCoin((await params).coin);
   try {
     if (hasDatabase()) {
       try {

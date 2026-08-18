@@ -5,9 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { week: string } },
+  { params }: { params: Promise<{ week: string }> },
 ) {
-  const report = readWeeklyReport(params.week);
+  const report = readWeeklyReport((await params).week);
   if (!report) {
     return NextResponse.json({ error: "report not found" }, { status: 404 });
   }

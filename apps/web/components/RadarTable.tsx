@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { flexRender, type SortingState } from "@tanstack/react-table";
 import {
-  createColumnHelper,
-  flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  useReactTable,
-  type SortingState,
-} from "@tanstack/react-table";
+  legacyCreateColumnHelper as createColumnHelper,
+  useLegacyTable as useReactTable,
+  type LegacyColumnDef,
+} from "@tanstack/react-table/legacy";
 import { useMemo, useState } from "react";
 import { cls, formatOiShort, signedPct } from "@/lib/format";
 import type { Positioning } from "@/lib/positioning";
@@ -61,7 +61,10 @@ export function RadarTable({ rows, loading }: Props) {
     { id: "crowd", desc: true },
   ]);
 
-  const columns = useMemo(
+  // react-table v9 column defs are invariant in TValue; `any` lets the
+  // heterogeneous accessor columns share one array type.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const columns = useMemo<LegacyColumnDef<Row, any>[]>(
     () => [
       col.accessor("ticker", {
         id: "market",
@@ -94,7 +97,7 @@ export function RadarTable({ rows, loading }: Props) {
             </span>
           );
         },
-        sortingFn: (a, b) =>
+        sortFn: (a, b) =>
           a.original.positioning.regime.localeCompare(b.original.positioning.regime),
       }),
       col.accessor((r) => r.positioning.spike_pts, {
