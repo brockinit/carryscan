@@ -38,6 +38,25 @@ _UNDERLYING_LOAD_SCHEMA = [
     bigquery.SchemaField("moc_imbalance_ratio", "FLOAT64"),
 ]
 
+_SURFACE_LOAD_SCHEMA = [
+    bigquery.SchemaField("as_of_date", "STRING"),
+    bigquery.SchemaField("underlying", "STRING"),
+    bigquery.SchemaField("spot", "FLOAT64"),
+    bigquery.SchemaField("dte_target", "INT64"),
+    bigquery.SchemaField("dte_actual", "INT64"),
+    bigquery.SchemaField("expiry", "STRING"),
+    bigquery.SchemaField("iv_atm", "FLOAT64"),
+    bigquery.SchemaField("iv_25d_put", "FLOAT64"),
+    bigquery.SchemaField("iv_25d_call", "FLOAT64"),
+    bigquery.SchemaField("rr_25d", "FLOAT64"),
+    bigquery.SchemaField("bf_25d", "FLOAT64"),
+    bigquery.SchemaField("straddle_mid_atm", "FLOAT64"),
+    # Day aggs have no OI; autodetect would infer STRING.
+    bigquery.SchemaField("call_oi", "INT64"),
+    bigquery.SchemaField("put_oi", "INT64"),
+    bigquery.SchemaField("source", "STRING"),
+]
+
 
 class Bq:
     def __init__(self, settings: Settings | None = None):
@@ -110,7 +129,12 @@ class Bq:
             return 0
         table = self.table_id("option_surface_daily")
         tmp = self.table_id("_tmp_option_surface_daily")
-        self._load_json_table(tmp, rows, write=bigquery.WriteDisposition.WRITE_TRUNCATE)
+        self._load_json_table(
+            tmp,
+            rows,
+            write=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            schema=_SURFACE_LOAD_SCHEMA,
+        )
         sql = f"""
         MERGE `{table}` T
         USING `{tmp}` S
