@@ -9,6 +9,35 @@ from google.cloud import bigquery
 
 from spy_lab.config import Settings, get_settings
 
+_UNDERLYING_LOAD_SCHEMA = [
+    bigquery.SchemaField("as_of_date", "STRING"),
+    bigquery.SchemaField("ticker", "STRING"),
+    bigquery.SchemaField("o", "FLOAT64"),
+    bigquery.SchemaField("h", "FLOAT64"),
+    bigquery.SchemaField("l", "FLOAT64"),
+    bigquery.SchemaField("c", "FLOAT64"),
+    bigquery.SchemaField("v", "FLOAT64"),
+    bigquery.SchemaField("gap_pct", "FLOAT64"),
+    bigquery.SchemaField("rel_vol_20", "FLOAT64"),
+    bigquery.SchemaField("prior_er", "FLOAT64"),
+    bigquery.SchemaField("rv5", "FLOAT64"),
+    bigquery.SchemaField("is_fomc", "BOOL"),
+    bigquery.SchemaField("is_fomc_eve", "BOOL"),
+    bigquery.SchemaField("is_opex", "BOOL"),
+    bigquery.SchemaField("is_triple_witching", "BOOL"),
+    bigquery.SchemaField("is_eom", "BOOL"),
+    bigquery.SchemaField("is_eoq", "BOOL"),
+    bigquery.SchemaField("is_vix_opex", "BOOL"),
+    bigquery.SchemaField("is_half_day", "BOOL"),
+    bigquery.SchemaField("is_nfp", "BOOL"),
+    bigquery.SchemaField("is_cpi", "BOOL"),
+    bigquery.SchemaField("is_high_impact_macro", "BOOL"),
+    bigquery.SchemaField("days_to_fomc", "INT64"),
+    bigquery.SchemaField("days_to_opex", "INT64"),
+    # Always-null in v1; autodetect would infer STRING and break MERGE.
+    bigquery.SchemaField("moc_imbalance_ratio", "FLOAT64"),
+]
+
 
 class Bq:
     def __init__(self, settings: Settings | None = None):
@@ -40,7 +69,12 @@ class Bq:
             return 0
         table = self.table_id("underlying_daily")
         tmp = self.table_id("_tmp_underlying_daily")
-        self._load_json_table(tmp, rows, write=bigquery.WriteDisposition.WRITE_TRUNCATE)
+        self._load_json_table(
+            tmp,
+            rows,
+            write=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            schema=_UNDERLYING_LOAD_SCHEMA,
+        )
         sql = f"""
         MERGE `{table}` T
         USING `{tmp}` S
@@ -354,6 +388,7 @@ class Bq:
         table_id: str,
         rows: Sequence[dict],
         write: str = bigquery.WriteDisposition.WRITE_TRUNCATE,
+        schema: list | None = None,
     ) -> None:
         import tempfile
         import os
@@ -365,7 +400,8 @@ class Bq:
         try:
             job_config = bigquery.LoadJobConfig(
                 source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-                autodetect=True,
+                autodetect=schema is None,
+                schema=schema,
                 write_disposition=write,
             )
             with open(path, "rb") as fh:
