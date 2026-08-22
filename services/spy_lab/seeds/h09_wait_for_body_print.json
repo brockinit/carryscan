@@ -1,0 +1,17 @@
+{
+  "id": "h09_wait_for_body_print_v1",
+  "title": "Wait for SPY to trade the fly body vs enter on first 15-minute print",
+  "structure": "fly_wait_for_print",
+  "hold_days": 0,
+  "entry": {},
+  "event_gates": { "require_any": [], "exclude_any": [] },
+  "decision_time": "pre_open",
+  "cost_bps": 0,
+  "train_start": "2018-01-01",
+  "train_end": "2022-12-31",
+  "test_start": "2023-01-01",
+  "test_end": "2025-10-22",
+  "min_trades": 40,
+  "data_requirements": ["spy_minute", "intended_body_strike", "fly_debit_and_pnl"],
+  "thesis": "Waiting until SPY trades the intended body strike, then entering, beats entering on the first 15-minute print. Cost of waiting is a worse debit, not missed expectancy."
+}

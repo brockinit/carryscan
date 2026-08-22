@@ -25,9 +25,10 @@ def run_overnight(
     *,
     hypotheses_path: Path | None = None,
     bq: Bq | None = None,
+    runnable_only: bool = False,
 ) -> dict:
     bq = bq or Bq()
-    results = run_seed_batch(bq=bq)
+    results = run_seed_batch(bq=bq, runnable_only=runnable_only)
     if hypotheses_path:
         extra = load_hypotheses_jsonl(hypotheses_path)
         if extra:
@@ -41,12 +42,15 @@ def run_overnight(
 
     kills = sum(1 for r in results if r["verdict"] == "KILL")
     holds = sum(1 for r in results if r["verdict"] == "HOLD")
+    blocked = sum(1 for r in results if r["verdict"] == "DATA_BLOCKED")
+    scored = kills + holds
     n = len(results)
     report = {
         "n": n,
         "kills": kills,
         "holds": holds,
-        "kill_rate": (kills / n) if n else 0.0,
+        "blocked": blocked,
+        "kill_rate": (kills / scored) if scored else 0.0,
         "results": [
             {
                 "id": r["experiment_id"],

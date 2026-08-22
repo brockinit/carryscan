@@ -1,0 +1,133 @@
+{
+  "note": "Pin/fly + OPEX tape. Seeded first: 1, 5, 6, 9. Only #6 is runnable on the daily panel; 1/5/9 need 0DTE clocks.",
+  "hypotheses": [
+    {
+      "n": 1,
+      "id": "h01_pin_range_compress_v1",
+      "seeded": true,
+      "runnable": false,
+      "needs": ["vix", "odte_max_oi_dist_pct_1000et"],
+      "thesis": "If VIX < 17 and SPY’s nearest 0DTE max-OI strike is within 0.4% of spot at 10:00 ET, the day’s high-low is smaller than the 20-day median."
+    },
+    {
+      "n": 2,
+      "id": "h02_magnet_print_fly_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["vix", "odte_magnet_traded_by_1100et", "fly_marks_0945_vs_after_print"],
+      "thesis": "If that magnet has already traded once by 11:00 ET, a long fly centered on it outperforms the same fly placed at 9:45 before the strike prints."
+    },
+    {
+      "n": 3,
+      "id": "h03_gex_wall_close_magnet_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["vix", "gex", "call_put_wall_gap_pct", "close_to_magnet_pct"],
+      "thesis": "If VIX is 14–16, GEX is dampening, and call/put walls are ≤0.6% apart, close-to-magnet distance at 16:00 is tighter than on trend days with VIX > 17."
+    },
+    {
+      "n": 4,
+      "id": "h04_fade_hole_vs_fat_strike_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["odte_atm_gamma_sign", "fat_positive_strike_0.2_0.5pct"],
+      "thesis": "If ATM 0DTE gamma is negative but a fat positive strike sits 0.2–0.5% away, fading the hole (body at ATM) loses vs body at the fat strike."
+    },
+    {
+      "n": 5,
+      "id": "h05_opex_pin_1400_vs_1000_v1",
+      "seeded": true,
+      "runnable": false,
+      "needs": ["odte_call_wall_1000et", "odte_max_gex_strike_1400et", "pin_close"],
+      "thesis": "On monthly OPEX Fridays, the 0DTE call-wall strike at 10:00 is a worse pin forecast than the strike that holds the most 0DTE gamma at 14:00."
+    },
+    {
+      "n": 6,
+      "id": "h06_post_opex_oc_range_v1",
+      "seeded": true,
+      "runnable": true,
+      "needs": [],
+      "thesis": "The first session after monthly OPEX has a larger open-to-close range than the OPEX Friday itself, given similar VIX (VIX filter applied only when present)."
+    },
+    {
+      "n": 7,
+      "id": "h07_gamma_flip_monday_open_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["friday_0dte_gex_sign", "monday_front_gex_near_friday_pin", "first_90m_range"],
+      "thesis": "If Friday 0DTE was all-positive gamma and Monday’s front gamma is net negative near Friday’s pin, Monday’s first 90 minutes travel farther than Friday’s first 90."
+    },
+    {
+      "n": 8,
+      "id": "h08_opex_fly_after_1400_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["opex_pin", "fly_marks_open_vs_1400"],
+      "thesis": "A fly placed on the OPEX pin after 14:00 beats the same fly placed at the open."
+    },
+    {
+      "n": 9,
+      "id": "h09_wait_for_body_print_v1",
+      "seeded": true,
+      "runnable": false,
+      "needs": ["spy_minute", "intended_body_strike", "fly_debit_and_pnl"],
+      "thesis": "Waiting until SPY trades the intended body strike, then entering, beats entering on the first 15-minute print. Cost of waiting is a worse debit, not missed expectancy."
+    },
+    {
+      "n": 10,
+      "id": "h10_sell_half_2x_hold_rest_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["0_1dte_fly_marks", "vix"],
+      "thesis": "Sell-half-at-2x then hold the rest to 75–80% of max beats both scratch-at-2x and hold-100%-to-expiry on 0–1 DTE flies in VIX < 17."
+    },
+    {
+      "n": 11,
+      "id": "h11_structure_stop_second_attempt_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["fly_attempts", "magnet"],
+      "thesis": "A stop that only kills that structure (not the level) plus a second attempt at the same magnet beats one larger add after the first stop."
+    },
+    {
+      "n": 12,
+      "id": "h12_two_attempts_max_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["intraday_attempt_pnl"],
+      "thesis": "Two attempted 0DTE structures and done beats a third attempt the same day (expectancy of trade 3 is negative)."
+    },
+    {
+      "n": 13,
+      "id": "h13_put_credit_under_wall_neg_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["put_wall", "one_way_sell", "put_credit_vs_long_fly"],
+      "thesis": "Put-credit under the put wall, after a one-way sell into that wall, has negative expectancy vs a long fly at the wall."
+    },
+    {
+      "n": 14,
+      "id": "h14_call_credit_first_tag_neg_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["vix", "spy_vs_21ema", "call_wall", "reject_print"],
+      "thesis": "With VIX < 17 and spot above the 21-EMA, fading the first tag of the call wall without a reject print has negative expectancy."
+    },
+    {
+      "n": 15,
+      "id": "h15_long_0dte_dampen_day_neg_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["vix", "dampen_flag", "0dte_long_vs_fly"],
+      "thesis": "Buying 0DTE SPY calls/puts on a dampening, VIX < 17, range day has negative expectancy vs the fly."
+    },
+    {
+      "n": 16,
+      "id": "h16_first15_vs_close_gex_v1",
+      "seeded": false,
+      "runnable": false,
+      "needs": ["first_15m_dir", "close_dir", "0dte_net_gamma_sign"],
+      "thesis": "First-15-minute SPY direction predicts the close less often when 0DTE net gamma is positive than when it is negative."
+    }
+  ]
+}

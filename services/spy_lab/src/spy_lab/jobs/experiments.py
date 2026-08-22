@@ -13,7 +13,11 @@ from spy_lab.specs.schema import ExperimentSpec
 SEEDS_DIR = PKG_ROOT / "seeds"
 
 
-def load_specs(path: Path | None = None) -> list[ExperimentSpec]:
+def load_specs(
+    path: Path | None = None,
+    *,
+    runnable_only: bool = False,
+) -> list[ExperimentSpec]:
     root = path or SEEDS_DIR
     specs: list[ExperimentSpec] = []
     if not root.exists():
@@ -24,6 +28,8 @@ def load_specs(path: Path | None = None) -> list[ExperimentSpec]:
             specs.extend(ExperimentSpec.model_validate(x) for x in data)
         else:
             specs.append(ExperimentSpec.model_validate(data))
+    if runnable_only:
+        specs = [s for s in specs if not s.data_requirements]
     return specs
 
 
@@ -63,9 +69,13 @@ def run_and_persist(spec: ExperimentSpec, panel: list[dict], bq: Bq | None = Non
     return result
 
 
-def run_seed_batch(bq: Bq | None = None) -> list[dict]:
+def run_seed_batch(
+    bq: Bq | None = None,
+    *,
+    runnable_only: bool = False,
+) -> list[dict]:
     bq = bq or Bq()
-    specs = load_specs()
+    specs = load_specs(runnable_only=runnable_only)
     if not specs:
         return []
     start = min(date.fromisoformat(s.train_start) for s in specs)

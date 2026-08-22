@@ -1,0 +1,20 @@
+{
+  "id": "h01_pin_range_compress_v1",
+  "title": "VIX<17 + 10:00 0DTE max-OI magnet → day range < 20d median",
+  "structure": "pin_range_compress",
+  "hold_days": 0,
+  "entry": {
+    "vix_max": 17,
+    "magnet_max_pct": 0.004
+  },
+  "event_gates": { "require_any": [], "exclude_any": [] },
+  "decision_time": "pre_open",
+  "cost_bps": 0,
+  "train_start": "2018-01-01",
+  "train_end": "2022-12-31",
+  "test_start": "2023-01-01",
+  "test_end": "2025-10-22",
+  "min_trades": 40,
+  "data_requirements": ["vix", "odte_max_oi_dist_pct_1000et"],
+  "thesis": "If VIX < 17 and SPY’s nearest 0DTE max-OI strike is within 0.4% of spot at 10:00 ET, the day’s high-low is smaller than the 20-day median."
+}

@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from spy_lab.backtest.run_spec import run_spec
+from spy_lab.jobs.experiments import load_specs
 from spy_lab.specs.schema import EntryRules, EventGates, ExperimentSpec
 
 
@@ -59,3 +60,56 @@ def test_run_spec_iv_short():
     result = run_spec(spec, panel)
     assert result["verdict"] in ("KILL", "HOLD")
     assert "run_id" in result
+
+
+def test_blocked_without_0dte_clock():
+    panel = _panel()
+    dates = [r["as_of_date"] for r in panel]
+    spec = ExperimentSpec(
+        id="h01",
+        title="blocked",
+        structure="pin_range_compress",
+        data_requirements=["vix", "odte_max_oi_dist_pct_1000et"],
+        train_start=dates[0].isoformat(),
+        train_end=dates[10].isoformat(),
+        test_start=dates[11].isoformat(),
+        test_end=dates[-1].isoformat(),
+        min_trades=1,
+    )
+    result = run_spec(spec, panel)
+    assert result["verdict"] == "DATA_BLOCKED"
+    assert "odte_max_oi_dist_pct_1000et" in (result["kill_reason"] or "")
+
+
+def test_opex_vs_next_range():
+    panel = _panel()
+    # every 10th row is opex; next day has a wider |O-C|
+    for i, row in enumerate(panel):
+        row["o"] = 100.0
+        row["c"] = 100.2 if i % 10 == 0 else 101.5
+        row["is_opex"] = i % 10 == 0
+    dates = [r["as_of_date"] for r in panel]
+    spec = ExperimentSpec(
+        id="h06",
+        title="opex vs next",
+        structure="opex_vs_next_oc_range",
+        hold_days=1,
+        event_gates=EventGates(require_any=["opex"]),
+        train_start=dates[0].isoformat(),
+        train_end=dates[len(dates) // 2].isoformat(),
+        test_start=dates[len(dates) // 2 + 1].isoformat(),
+        test_end=dates[-1].isoformat(),
+        min_trades=1,
+    )
+    result = run_spec(spec, panel)
+    assert result["test"]["n_trades"] >= 1
+    assert result["test"]["avg_pnl"] > 0
+
+
+def test_new_seeds_validate():
+    specs = load_specs()
+    ids = {s.id for s in specs}
+    assert "h01_pin_range_compress_v1" in ids
+    assert "h05_opex_pin_1400_vs_1000_v1" in ids
+    assert "h06_post_opex_oc_range_v1" in ids
+    assert "h09_wait_for_body_print_v1" in ids

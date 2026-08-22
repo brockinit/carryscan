@@ -79,6 +79,47 @@ def _passes_entry(row: dict, spec: ExperimentSpec) -> bool:
     return True
 
 
+def _missing_requirements(spec: ExperimentSpec, panel: list[dict]) -> list[str]:
+    if not spec.data_requirements:
+        return []
+    if not panel:
+        return list(spec.data_requirements)
+    have = set()
+    for row in panel:
+        for k in spec.data_requirements:
+            if row.get(k) is not None:
+                have.add(k)
+    return [k for k in spec.data_requirements if k not in have]
+
+
+def _oc_range(row: dict) -> float | None:
+    o, c = row.get("o"), row.get("c")
+    if not o or c is None:
+        return None
+    return abs(float(c) - float(o)) / float(o)
+
+
+def _opex_vs_next_pnls(panel: list[dict], spec: ExperimentSpec) -> list[float]:
+    """+pnl when next session |O-C| exceeds OPEX Friday's."""
+    pnls: list[float] = []
+    band = spec.entry.vix_similar_max
+    for i, row in enumerate(panel):
+        if not _passes_entry(row, spec):
+            continue
+        if i + 1 >= len(panel):
+            continue
+        nxt = panel[i + 1]
+        if band is not None:
+            v0, v1 = row.get("vix"), nxt.get("vix")
+            if v0 is not None and v1 is not None and abs(float(v0) - float(v1)) > band:
+                continue
+        r0, r1 = _oc_range(row), _oc_range(nxt)
+        if r0 is None or r1 is None:
+            continue
+        pnls.append(r1 - r0)
+    return pnls
+
+
 def _fwd_return(panel: list[dict], i: int, hold: int, field: str) -> float | None:
     if i + hold >= len(panel):
         return None
@@ -121,14 +162,17 @@ def _trade_pnl(panel: list[dict], i: int, spec: ExperimentSpec) -> float | None:
 
 
 def _slice_metrics(panel: list[dict], spec: ExperimentSpec) -> dict:
-    pnls: list[float] = []
-    for i in range(len(panel)):
-        if not _passes_entry(panel[i], spec):
-            continue
-        pnl = _trade_pnl(panel, i, spec)
-        if pnl is None:
-            continue
-        pnls.append(pnl)
+    if spec.structure == "opex_vs_next_oc_range":
+        pnls = _opex_vs_next_pnls(panel, spec)
+    else:
+        pnls = []
+        for i in range(len(panel)):
+            if not _passes_entry(panel[i], spec):
+                continue
+            pnl = _trade_pnl(panel, i, spec)
+            if pnl is None:
+                continue
+            pnls.append(pnl)
     n = len(pnls)
     avg = sum(pnls) / n if n else 0.0
     win = sum(1 for p in pnls if p > 0) / n if n else 0.0
@@ -156,6 +200,27 @@ def judge(train: dict, test: dict, spec: ExperimentSpec) -> tuple[str, str | Non
 
 def run_spec(spec: ExperimentSpec, panel: list[dict]) -> dict:
     """Run walk-forward on an in-memory panel (list of dict rows sorted by date)."""
+    missing = _missing_requirements(spec, panel)
+    if missing:
+        spec_hash = hashlib.sha256(
+            json.dumps(spec.model_dump(), sort_keys=True).encode()
+        ).hexdigest()[:16]
+        empty = {"n_trades": 0, "avg_pnl": 0.0, "win_rate": 0.0, "sum_pnl": 0.0}
+        return {
+            "run_id": str(uuid.uuid4()),
+            "experiment_id": spec.id,
+            "spec_hash": spec_hash,
+            "title": spec.title,
+            "train": empty,
+            "test": empty,
+            "verdict": "DATA_BLOCKED",
+            "kill_reason": "missing panel fields: " + ", ".join(missing),
+            "primary_metric": 0.0,
+            "n_trades": 0,
+            "train_metric": 0.0,
+            "test_metric": 0.0,
+            "spec": spec.model_dump(),
+        }
     train_a, train_b = date.fromisoformat(spec.train_start), date.fromisoformat(spec.train_end)
     test_a, test_b = date.fromisoformat(spec.test_start), date.fromisoformat(spec.test_end)
     train_panel = [r for r in panel if train_a <= _as_date(r["as_of_date"]) <= train_b]

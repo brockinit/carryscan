@@ -45,9 +45,15 @@ def main(argv: list[str] | None = None) -> None:
 
     r = sub.add_parser("run-spec", help="Run seed experiment specs")
     r.add_argument("--spec", type=Path, default=None, help="Single JSON file")
+    r.add_argument(
+        "--runnable-only",
+        action="store_true",
+        help="Skip specs that declare missing 0DTE/intraday fields",
+    )
 
     o = sub.add_parser("overnight", help="Seed + optional hypotheses JSONL")
     o.add_argument("--hypotheses", type=Path, default=None)
+    o.add_argument("--runnable-only", action="store_true")
 
     args = p.parse_args(argv)
     settings = get_settings()
@@ -112,13 +118,22 @@ def main(argv: list[str] | None = None) -> None:
         else:
             import json as _json
 
-            print(_json.dumps(run_seed_batch(), indent=2, default=str))
+            print(
+                _json.dumps(
+                    run_seed_batch(runnable_only=args.runnable_only),
+                    indent=2,
+                    default=str,
+                )
+            )
         return
 
     if args.cmd == "overnight":
         from spy_lab.agent.overnight import run_overnight
 
-        run_overnight(hypotheses_path=args.hypotheses)
+        run_overnight(
+            hypotheses_path=args.hypotheses,
+            runnable_only=args.runnable_only,
+        )
         return
 
 

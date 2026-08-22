@@ -1,0 +1,24 @@
+{
+  "id": "h05_opex_pin_1400_vs_1000_v1",
+  "title": "OPEX Friday: 14:00 max 0DTE gamma pins better than 10:00 call wall",
+  "structure": "odte_pin_forecast",
+  "hold_days": 0,
+  "entry": {},
+  "event_gates": {
+    "require_any": ["opex", "triple_witching"],
+    "exclude_any": []
+  },
+  "decision_time": "pre_open",
+  "cost_bps": 0,
+  "train_start": "2018-01-01",
+  "train_end": "2022-12-31",
+  "test_start": "2023-01-01",
+  "test_end": "2025-10-22",
+  "min_trades": 20,
+  "data_requirements": [
+    "odte_call_wall_1000et",
+    "odte_max_gex_strike_1400et",
+    "pin_close"
+  ],
+  "thesis": "On monthly OPEX Fridays, the 0DTE call-wall strike at 10:00 is a worse pin forecast than the strike that holds the most 0DTE gamma at 14:00."
+}
