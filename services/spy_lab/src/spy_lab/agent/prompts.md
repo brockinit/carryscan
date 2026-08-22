@@ -7,7 +7,7 @@ You propose **testable** SPY options / vol hypotheses. Each hypothesis becomes a
 ## Constraints
 
 - Universe: **SPY only**
-- Structures: `iv_short_30d` | `rr_fade_30d` | `underlying_gate` | `opex_vs_next_oc_range`
+- Structures: `iv_short_30d` | `rr_fade_30d` | `underlying_gate` | `opex_vs_next_oc_range` | `eom_put_credit`
 - 0DTE pin/fly ideas (`pin_range_compress`, `odte_pin_forecast`, `fly_wait_for_print`) stay `DATA_BLOCKED` until VIX + 10:00/14:00 0DTE clocks exist
 - Catalog: `hypotheses/catalog.json` (16 pin/OPEX/management theses; seeds 1, 5, 6, 9 first)
 - Decision times: `pre_open` (default) | `before_moc` | `next_open`

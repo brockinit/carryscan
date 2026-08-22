@@ -1,0 +1,20 @@
+{
+  "id": "mtd_put_credit_eom_v1",
+  "title": "MTD ≤ −1% → short ATM put credit to month-end expiry",
+  "structure": "eom_put_credit",
+  "hold_days": 0,
+  "entry": {
+    "mtd_max": -0.01,
+    "spread_width": 5.0
+  },
+  "event_gates": { "require_any": [], "exclude_any": [] },
+  "decision_time": "pre_open",
+  "cost_bps": 5,
+  "train_start": "2018-01-01",
+  "train_end": "2022-12-31",
+  "test_start": "2023-01-01",
+  "test_end": "2025-10-22",
+  "min_trades": 12,
+  "data_requirements": [],
+  "thesis": "When SPY month-to-date vs prior month close first hits −1% or worse, sell a 5-wide ATM put credit (SPY proxy for S&P) and hold to that month’s last close. Credit from 30d ATM IV, BS; PnL is fraction of width."
+}

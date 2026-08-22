@@ -7,6 +7,8 @@ import uuid
 from datetime import date
 from typing import Any
 
+from spy_lab.bs import bs_price
+from spy_lab.config import get_settings
 from spy_lab.specs.schema import ExperimentSpec
 
 # Map event gate names → underlying_daily boolean columns
@@ -120,6 +122,73 @@ def _opex_vs_next_pnls(panel: list[dict], spec: ExperimentSpec) -> list[float]:
     return pnls
 
 
+def _fill_mtd(panel: list[dict]) -> None:
+    """MTD vs prior month's last close (SPY proxy for S&P)."""
+    prev_eom: float | None = None
+    ym_prev: tuple[int, int] | None = None
+    last_c: float | None = None
+    for row in panel:
+        d = _as_date(row["as_of_date"])
+        ym = (d.year, d.month)
+        if ym_prev is not None and ym != ym_prev:
+            prev_eom = last_c
+        ym_prev = ym
+        last_c = row.get("c")
+        if prev_eom and last_c:
+            row["mtd"] = float(last_c) / float(prev_eom) - 1.0
+        else:
+            row["mtd"] = None
+
+
+def _eom_put_credit_pnls(panel: list[dict], spec: ExperimentSpec) -> list[float]:
+    """Short ATM put / long ATM−width put, first MTD breach, hold to month-end.
+
+    PnL is fraction of spread width (max loss ≈ 1).
+    """
+    _fill_mtd(panel)
+    width = spec.entry.spread_width or 5.0
+    thresh = spec.entry.mtd_max if spec.entry.mtd_max is not None else 0.0
+    r = get_settings().risk_free_rate
+    last_i: dict[tuple[int, int], int] = {}
+    for i, row in enumerate(panel):
+        d = _as_date(row["as_of_date"])
+        last_i[(d.year, d.month)] = i
+
+    seen: set[tuple[int, int]] = set()
+    pnls: list[float] = []
+    for i, row in enumerate(panel):
+        d = _as_date(row["as_of_date"])
+        ym = (d.year, d.month)
+        if ym in seen:
+            continue
+        mtd = row.get("mtd")
+        if mtd is None or mtd > thresh:
+            continue
+        if not _passes_entry(row, spec):
+            continue
+        j = last_i[ym]
+        if j <= i:
+            continue
+        spot, iv, end = row.get("c"), row.get("iv_atm"), panel[j].get("c")
+        if not spot or not iv or not end:
+            continue
+        t = max((_as_date(panel[j]["as_of_date"]) - d).days, 1) / 365.0
+        k_short = float(round(float(spot)))
+        k_long = k_short - width
+        if k_long <= 0:
+            continue
+        credit = bs_price(spot, k_short, t, r, float(iv), "P") - bs_price(
+            spot, k_long, t, r, float(iv), "P"
+        )
+        if credit <= 0:
+            continue
+        expiry_val = max(k_short - float(end), 0.0) - max(k_long - float(end), 0.0)
+        cost = spec.cost_bps / 10000.0 * float(spot)
+        pnls.append((credit - expiry_val - cost) / width)
+        seen.add(ym)
+    return pnls
+
+
 def _fwd_return(panel: list[dict], i: int, hold: int, field: str) -> float | None:
     if i + hold >= len(panel):
         return None
@@ -164,6 +233,8 @@ def _trade_pnl(panel: list[dict], i: int, spec: ExperimentSpec) -> float | None:
 def _slice_metrics(panel: list[dict], spec: ExperimentSpec) -> dict:
     if spec.structure == "opex_vs_next_oc_range":
         pnls = _opex_vs_next_pnls(panel, spec)
+    elif spec.structure == "eom_put_credit":
+        pnls = _eom_put_credit_pnls(panel, spec)
     else:
         pnls = []
         for i in range(len(panel)):

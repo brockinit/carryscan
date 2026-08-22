@@ -13,6 +13,7 @@ Structure = Literal[
     "pin_range_compress",
     "odte_pin_forecast",
     "fly_wait_for_print",
+    "eom_put_credit",
 ]
 
 
@@ -31,6 +32,8 @@ class EntryRules(BaseModel):
     vix_min: float | None = None
     vix_similar_max: float | None = None  # |ΔVIX| vs next session
     magnet_max_pct: float | None = None
+    mtd_max: float | None = None  # enter when month-to-date ≤ this (e.g. -0.01)
+    spread_width: float | None = None  # SPY points for put credit (default 5)
 
 
 class ExperimentSpec(BaseModel):

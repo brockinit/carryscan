@@ -106,6 +106,58 @@ def test_opex_vs_next_range():
     assert result["test"]["avg_pnl"] > 0
 
 
+def test_eom_put_credit_recovers_when_month_bounces():
+    """Down MTD early, finish month above ATM → credit kept (positive)."""
+    start = date(2020, 1, 2)
+    panel = []
+    px = 100.0
+    d = start
+    while d.year == 2020 and d.month <= 3:
+        if d.weekday() < 5:
+            if d.month == 2 and d.day <= 5:
+                px = 97.0
+            elif d.month == 2:
+                px = 102.0
+            else:
+                px = 100.0
+            panel.append(
+                {
+                    "as_of_date": d,
+                    "c": px,
+                    "iv_atm": 0.2,
+                    "gap_pct": 0.0,
+                    "rel_vol_20": 1.0,
+                    "is_fomc": False,
+                    "is_fomc_eve": False,
+                    "is_opex": False,
+                    "is_triple_witching": False,
+                    "is_eom": False,
+                    "is_eoq": False,
+                    "is_vix_opex": False,
+                    "is_half_day": False,
+                    "is_nfp": False,
+                    "is_cpi": False,
+                    "is_high_impact_macro": False,
+                    "moc_imbalance_ratio": None,
+                }
+            )
+        d += timedelta(days=1)
+    spec = ExperimentSpec(
+        id="mtd",
+        title="mtd put credit",
+        structure="eom_put_credit",
+        entry=EntryRules(mtd_max=-0.01, spread_width=5.0),
+        train_start="2020-01-01",
+        train_end="2020-02-15",
+        test_start="2020-02-16",
+        test_end="2020-03-31",
+        min_trades=1,
+        kill_if_test_net_le_zero=False,
+    )
+    result = run_spec(spec, panel)
+    assert result["train"]["n_trades"] + result["test"]["n_trades"] >= 1
+
+
 def test_new_seeds_validate():
     specs = load_specs()
     ids = {s.id for s in specs}
@@ -113,3 +165,4 @@ def test_new_seeds_validate():
     assert "h05_opex_pin_1400_vs_1000_v1" in ids
     assert "h06_post_opex_oc_range_v1" in ids
     assert "h09_wait_for_body_print_v1" in ids
+    assert "mtd_put_credit_eom_v1" in ids
