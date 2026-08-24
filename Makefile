@@ -22,6 +22,8 @@ weekly:
 
 test:
 	cd services/ingest && npm test
+	cd services/spy_lab && python -m pytest
+	cd services/trader_ai && python -m pytest
 	cd apps/web && npm run typecheck && npm run lint && npm run build
 
 deploy:

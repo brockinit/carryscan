@@ -1,0 +1,22 @@
+# Cloud Run service (chat API). Tape worker: same image, command trader-ai tape --force on a 90s RTH schedule.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: trader-ai
+spec:
+  template:
+    spec:
+      containerConcurrency: 20
+      containers:
+        - image: trader-ai
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: DATABASE_URL
+            - name: MASSIVE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: MASSIVE_API_KEY

@@ -7,6 +7,12 @@ const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/basket", label: "Basket" },
   { href: "/weekly", label: "Weekly report" },
+  { href: "/copilot", label: "Copilot" },
+  { href: "/tape", label: "Tape" },
+  { href: "/brief", label: "Brief" },
+  { href: "/journal", label: "Journal" },
+  { href: "/lab", label: "Lab" },
+  { href: "/review", label: "Review" },
 ] as const;
 
 export function SiteNav() {

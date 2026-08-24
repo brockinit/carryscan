@@ -14,6 +14,7 @@ Structure = Literal[
     "odte_pin_forecast",
     "fly_wait_for_print",
     "eom_put_credit",
+    "event_iv_crush",
 ]
 
 
@@ -34,6 +35,7 @@ class EntryRules(BaseModel):
     magnet_max_pct: float | None = None
     mtd_max: float | None = None  # enter when month-to-date ≤ this (e.g. -0.01)
     spread_width: float | None = None  # SPY points for put credit (default 5)
+    max_dte: int | None = None  # event_iv_crush: only DTE at or below this (default 7)
 
 
 class ExperimentSpec(BaseModel):

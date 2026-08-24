@@ -158,6 +158,35 @@ def test_eom_put_credit_recovers_when_month_bounces():
     assert result["train"]["n_trades"] + result["test"]["n_trades"] >= 1
 
 
+def test_event_iv_crush_shorts_post_print_iv():
+    panel = _panel()
+    for i, row in enumerate(panel):
+        row["is_earnings"] = i % 15 == 0
+        row["dte"] = 5
+        # IV falls after earnings rows
+        if i % 15 == 0:
+            row["iv_atm"] = 0.35
+        elif i % 15 < 6:
+            row["iv_atm"] = 0.22
+    dates = [r["as_of_date"] for r in panel]
+    spec = ExperimentSpec(
+        id="crush",
+        title="earnings iv crush",
+        structure="event_iv_crush",
+        hold_days=5,
+        train_start=dates[0].isoformat(),
+        train_end=dates[len(dates) // 2].isoformat(),
+        test_start=dates[len(dates) // 2 + 1].isoformat(),
+        test_end=dates[-1].isoformat(),
+        min_trades=1,
+    )
+    result = run_spec(spec, panel)
+    assert result["train"]["n_trades"] + result["test"]["n_trades"] >= 1
+    assert result["test"]["avg_pnl"] > 0
+    assert "ci_low" in result["test"]
+    assert "t_stat" in result["test"]
+
+
 def test_new_seeds_validate():
     specs = load_specs()
     ids = {s.id for s in specs}

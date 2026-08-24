@@ -7,6 +7,7 @@ import uuid
 from datetime import date
 from typing import Any
 
+from spy_lab.backtest.stats import enrich_metrics
 from spy_lab.bs import bs_price
 from spy_lab.config import get_settings
 from spy_lab.specs.schema import ExperimentSpec
@@ -25,6 +26,7 @@ _FLAG = {
     "nfp": "is_nfp",
     "cpi": "is_cpi",
     "high_impact_macro": "is_high_impact_macro",
+    "earnings": "is_earnings",
 }
 
 
@@ -54,6 +56,14 @@ def _passes_entry(row: dict, spec: ExperimentSpec) -> bool:
             return False
     elif e.abs_gap_min is not None or e.gap_side in ("down", "up"):
         return False
+
+    if spec.structure == "event_iv_crush":
+        if not row.get("is_earnings"):
+            return False
+        max_dte = e.max_dte if e.max_dte is not None else 7
+        dte = row.get("dte")
+        if dte is not None and int(dte) > max_dte:
+            return False
 
     # event gates
     req = spec.event_gates.require_any
@@ -227,6 +237,11 @@ def _trade_pnl(panel: list[dict], i: int, spec: ExperimentSpec) -> float | None:
             return None
         # long SPY proxy
         return (c1 / c0 - 1.0) - cost
+    if spec.structure == "event_iv_crush":
+        chg = _fwd_return(panel, i, hold, "iv_atm")
+        if chg is None:
+            return None
+        return -chg - cost
     return None
 
 
@@ -247,12 +262,13 @@ def _slice_metrics(panel: list[dict], spec: ExperimentSpec) -> dict:
     n = len(pnls)
     avg = sum(pnls) / n if n else 0.0
     win = sum(1 for p in pnls if p > 0) / n if n else 0.0
-    return {
+    base = {
         "n_trades": n,
         "avg_pnl": avg,
         "win_rate": win,
         "sum_pnl": sum(pnls) if pnls else 0.0,
     }
+    return enrich_metrics(base, pnls)
 
 
 def judge(train: dict, test: dict, spec: ExperimentSpec) -> tuple[str, str | None]:
@@ -276,7 +292,16 @@ def run_spec(spec: ExperimentSpec, panel: list[dict]) -> dict:
         spec_hash = hashlib.sha256(
             json.dumps(spec.model_dump(), sort_keys=True).encode()
         ).hexdigest()[:16]
-        empty = {"n_trades": 0, "avg_pnl": 0.0, "win_rate": 0.0, "sum_pnl": 0.0}
+        empty = {
+            "n_trades": 0,
+            "avg_pnl": 0.0,
+            "win_rate": 0.0,
+            "sum_pnl": 0.0,
+            "t_stat": None,
+            "ci_low": None,
+            "ci_high": None,
+            "multiple_testing_note": None,
+        }
         return {
             "run_id": str(uuid.uuid4()),
             "experiment_id": spec.id,
